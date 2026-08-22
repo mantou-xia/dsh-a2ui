@@ -18,7 +18,68 @@ export type A2uiSurfaceSnapshot = {
   sendDataModel?: boolean;
   /** 修复后必有（root 可达组件树，非空）。 */
   components: A2uiComponent[];
+  /** 由 updateDataModel 驱动的 surface 局部状态。 */
+  dataModel?: Record<string, unknown>;
 };
+
+export type A2uiSurfaceMap = Map<string, A2uiSurfaceSnapshot>;
+
+function pointerParts(path: string | undefined): string[] {
+  if (path === undefined || path === "" || !path.startsWith("/")) return [];
+  return path.slice(1).split("/").map((part) => part.replaceAll("~1", "/").replaceAll("~0", "~"));
+}
+
+function applyDataModelUpdate(model: Record<string, unknown>, path: string | undefined, value: unknown): Record<string, unknown> {
+  const parts = pointerParts(path);
+  if (parts.length === 0) return value !== null && typeof value === "object" && !Array.isArray(value) ? { ...value } : {};
+  const root: Record<string, unknown> = { ...model };
+  let target = root;
+  for (const part of parts.slice(0, -1)) {
+    const current = target[part];
+    const next = current !== null && typeof current === "object" && !Array.isArray(current) ? { ...current } : {};
+    target[part] = next;
+    target = next;
+  }
+  const leaf = parts.at(-1);
+  if (leaf === undefined) return root;
+  if (value === undefined) delete target[leaf]; else target[leaf] = value;
+  return root;
+}
+
+/** 按 A2UI envelope 顺序归约完整 document；无前置 createSurface 的增量消息安全忽略。 */
+export function reduceA2uiDocument(messages: readonly A2uiEnvelope[]): A2uiSurfaceMap {
+  const surfaces: A2uiSurfaceMap = new Map();
+  for (const message of messages) {
+    if ("createSurface" in message) {
+      const source = message.createSurface;
+      surfaces.set(source.surfaceId, {
+        surfaceId: source.surfaceId,
+        catalogId: source.catalogId ?? "dsh-basic",
+        ...(source.theme !== undefined ? { theme: source.theme } : {}),
+        ...(source.sendDataModel !== undefined ? { sendDataModel: source.sendDataModel } : {}),
+        components: source.components ?? [],
+        dataModel: {},
+      });
+    } else if ("deleteSurface" in message) {
+      surfaces.delete(message.deleteSurface.surfaceId);
+    } else if ("updateComponents" in message) {
+      const current = surfaces.get(message.updateComponents.surfaceId);
+      if (current === undefined) continue;
+      const byId = new Map(current.components.map((component) => [component.id, component]));
+      for (const component of message.updateComponents.components) byId.set(component.id, { ...byId.get(component.id), ...component });
+      surfaces.set(current.surfaceId, { ...current, components: [...byId.values()] });
+    } else if ("updateDataModel" in message) {
+      const current = surfaces.get(message.updateDataModel.surfaceId);
+      if (current !== undefined) {
+        surfaces.set(current.surfaceId, {
+          ...current,
+          dataModel: applyDataModelUpdate(current.dataModel ?? {}, message.updateDataModel.path, message.updateDataModel.value),
+        });
+      }
+    }
+  }
+  return surfaces;
+}
 
 /** 从 envelope 读取 createSurface 载荷；非 createSurface → null。 */
 export function readCreateSurface(envelope: A2uiEnvelope): A2uiCreateSurface | null {

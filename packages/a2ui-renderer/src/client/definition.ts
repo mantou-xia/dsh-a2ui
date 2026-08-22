@@ -22,9 +22,8 @@ import type {
   ConversationPublication,
 } from "@deepseek-ai/dsh-client-runtime/client";
 import {
-  DSH_BASIC_CATALOG_ID,
   isA2uiEnvelope,
-  readCreateSurface,
+  reduceA2uiDocument,
 } from "@dsh-a2ui/a2ui-protocol";
 import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
 import type { A2uiChatData, A2uiSurfaceState } from "./chat-data.ts";
@@ -40,14 +39,15 @@ interface A2uiDefinitionState {
   /** 流式累积的工具参数。 */
   argsRaw: string;
   /** 落定后的权威 surface（工具结果）。 */
-  settled: A2uiSurfaceState | null;
+  settled: ReadonlyMap<string, A2uiSurfaceState> | null;
+  preview: ReadonlyMap<string, A2uiSurfaceState> | null;
   /** 渲染锚点：工具调用事件的 seq（流中位置）。 */
   anchorSeq: number | null;
   location: ConversationLocation | null;
 }
 
 function initial(): A2uiDefinitionState {
-  return { renderIndex: null, surfaceId: null, argsRaw: "", settled: null, anchorSeq: null, location: null };
+  return { renderIndex: null, surfaceId: null, argsRaw: "", settled: null, preview: null, anchorSeq: null, location: null };
 }
 
 /** tool/result.meta 判别。 */
@@ -67,7 +67,8 @@ export function isA2uiSurfaceMeta(value: unknown): value is {
 }
 
 /** 解析 JSONL document（每行一个 A2UI envelope）为 surface 快照（取第一个 createSurface）。 */
-export function snapshotFromDocument(document: string): A2uiSurfaceSnapshot | null {
+export function snapshotsFromDocument(document: string): ReadonlyMap<string, A2uiSurfaceSnapshot> {
+  const messages = [];
   for (const line of document.split("\n")) {
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
@@ -77,18 +78,21 @@ export function snapshotFromDocument(document: string): A2uiSurfaceSnapshot | nu
     } catch {
       continue;
     }
-    if (!isA2uiEnvelope(envelope)) continue;
-    const createSurface = readCreateSurface(envelope);
-    if (createSurface === null) continue;
-    return {
-      surfaceId: createSurface.surfaceId,
-      catalogId: createSurface.catalogId ?? DSH_BASIC_CATALOG_ID,
-      ...(createSurface.theme !== undefined ? { theme: createSurface.theme } : {}),
-      ...(createSurface.sendDataModel !== undefined ? { sendDataModel: createSurface.sendDataModel } : {}),
-      components: createSurface.components ?? [],
-    };
+    if (isA2uiEnvelope(envelope)) messages.push(envelope);
   }
-  return null;
+  return reduceA2uiDocument(messages);
+}
+
+function previewFromArguments(argsRaw: string, seq: number): ReadonlyMap<string, A2uiSurfaceState> | null {
+  try {
+    const parsed: unknown = JSON.parse(argsRaw);
+    if (typeof parsed !== "object" || parsed === null || !Array.isArray((parsed as Record<string, unknown>).messages)) return null;
+    const snapshots = reduceA2uiDocument((parsed as { messages: unknown[] }).messages.filter(isA2uiEnvelope));
+    if (snapshots.size === 0) return null;
+    return new Map([...snapshots.values()].map((snapshot) => [snapshot.surfaceId, { surfaceId: snapshot.surfaceId, snapshot, seq }]));
+  } catch {
+    return null;
+  }
 }
 
 function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDefinitionState {
@@ -107,20 +111,23 @@ function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDe
       }
     }
     if (renderIndex !== null && chunk.index === renderIndex) {
-      return { ...state, renderIndex, surfaceId, anchorSeq, location, argsRaw: state.argsRaw + chunk.argumentsDelta };
+      const argsRaw = state.argsRaw + chunk.argumentsDelta;
+      return { ...state, renderIndex, surfaceId, anchorSeq, location, argsRaw, preview: previewFromArguments(argsRaw, event.seq) };
     }
     return { ...state, renderIndex, surfaceId, anchorSeq, location };
   }
   if (event.type === "tool/result" && isA2uiSurfaceMeta(event.data.meta)) {
     const meta = event.data.meta;
-    const snapshot = snapshotFromDocument(meta.document);
-    if (snapshot === null) return state;
+    const snapshots = snapshotsFromDocument(meta.document);
+    if (snapshots.size === 0) return state;
+    const settled = new Map<string, A2uiSurfaceState>();
+    for (const snapshot of snapshots.values()) settled.set(snapshot.surfaceId, { surfaceId: snapshot.surfaceId, snapshot, seq: event.seq });
     return {
       ...state,
       // 回放（无流式 chunk）时以 tool/result 事件为锚。
       anchorSeq: state.anchorSeq ?? event.seq,
       location: state.location ?? match.location,
-      settled: { surfaceId: meta.surfaceId, snapshot, seq: event.seq },
+      settled,
     };
   }
   return state;
@@ -131,9 +138,8 @@ function publication(match: ConversationMatch): ConversationPublication {
 }
 
 function buildViewNode(context: ConversationNodeContext<A2uiDefinitionState>): ChatConversationViewNode | null {
-  const settled = context.state?.settled ?? null;
-  if (settled === null) return null;
-  const surfaces = new Map<string, A2uiSurfaceState>([[settled.surfaceId, settled]]);
+  const surfaces = context.state?.settled ?? context.state?.preview ?? null;
+  if (surfaces === null || surfaces.size === 0) return null;
   const data: A2uiChatData = { surfaces };
   return {
     key: context.key,

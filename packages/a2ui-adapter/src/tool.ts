@@ -16,7 +16,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import type { GenericCallView, GenericResultView, ToolResult } from "@deepseek-ai/dsh-tools";
 import type { JsonValue } from "@deepseek-ai/dsh-session";
-import { repairA2uiEnvelope } from "@dsh-a2ui/a2ui-protocol";
+import { isA2uiEnvelope, reduceA2uiDocument, repairA2uiEnvelope } from "@dsh-a2ui/a2ui-protocol";
 import { A2uiSurfaceStateStore } from "./surface-state.js";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;
@@ -143,8 +143,11 @@ export function applyA2uiTool(ctx: Context): void {
       // 重绘是完整快照；模型若遗漏已有 chart.series，按同会话、同业务 surface
       // 回填最后一次 durable 快照中的数据。显式 series: {} 仍表示清空。
       const merged = surfaceState.merge(exec.agent, repaired);
-      const document = serializeDocument([merged]);
-      const componentNames = (merged.createSurface.components ?? []).map((c) => c.component);
+      const updates = messages.slice(1).filter(isA2uiEnvelope);
+      const normalized = [merged, ...updates];
+      const document = serializeDocument(normalized);
+      const componentNames = [...reduceA2uiDocument(normalized).values()]
+        .flatMap((surface) => surface.components.map((component) => component.component));
       const surfaceId = String(exec.callId);
       const title = typeof args.title === "string" && args.title.trim().length > 0 ? args.title.trim() : undefined;
       const meta: A2uiSurfaceMeta = {
