@@ -40,7 +40,7 @@ export const DSH_BASIC_CATALOG: A2uiCatalog = {
         // kind 枚举：bars（柱状，默认）/ line（折线）/ donut（环形占比）。
         { name: "kind", type: "string", maxLength: 20 },
         { name: "labels", type: "string[]" },
-        { name: "series", type: "object" },
+        { name: "series", type: "chart-series" },
       ],
       limits: { maxChartPoints: 60, maxStringLength: 2000 },
     },

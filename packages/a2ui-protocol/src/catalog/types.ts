@@ -15,6 +15,8 @@ export type CatalogPropertyType =
   | "string[][]"
   | "number[]"
   | "object"
+  /** 图表序列：接受 catalog 声明的对象或数组写法，并归一为 renderer 的对象写法。 */
+  | "chart-series"
   /** 数据绑定值：字面量 | {path} | {call, args}。 */
   | "bound";
 

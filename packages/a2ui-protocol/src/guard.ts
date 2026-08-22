@@ -62,6 +62,49 @@ function sanitizeBound(value: unknown, max: number): A2uiComponentPropertyValue 
   return undefined;
 }
 
+/**
+ * 归一图表序列为 renderer 的 `{ [name]: number[] }`。
+ *
+ * 除标准对象外，还支持模型稳定产出的两种数组形态：
+ * - `[{ name, values | data }]`（多系列）
+ * - `[{ label, value }]`（单系列点集；labels 由 repairComponent 同步补齐）
+ */
+function sanitizeChartSeries(value: unknown, maxPoints: number): Record<string, number[]> | undefined {
+  const normalizeValues = (raw: unknown): number[] | undefined => {
+    if (!Array.isArray(raw)) return undefined;
+    const values = raw
+      .slice(0, maxPoints)
+      .map((item) => clampNumber(item))
+      .filter((item): item is number => item !== undefined);
+    return values.length > 0 ? values : undefined;
+  };
+  if (isPlainRecord(value)) {
+    const out: Record<string, number[]> = {};
+    for (const [name, raw] of Object.entries(value)) {
+      const key = truncateString(name, A2UI_LIMITS.maxString);
+      const values = normalizeValues(raw);
+      if (key !== undefined && values !== undefined) out[key] = values;
+    }
+    return Object.keys(out).length > 0 ? out : {};
+  }
+  if (!Array.isArray(value)) return undefined;
+  const named: Record<string, number[]> = {};
+  const points: number[] = [];
+  for (const item of value.slice(0, maxPoints)) {
+    if (!isPlainRecord(item)) continue;
+    const name = truncateString(item.name, A2UI_LIMITS.maxString);
+    const values = normalizeValues(item.values ?? item.data);
+    if (name !== undefined && values !== undefined) {
+      named[name] = values;
+      continue;
+    }
+    const point = clampNumber(item.value);
+    if (typeof item.label === "string" && point !== undefined) points.push(point);
+  }
+  if (Object.keys(named).length > 0) return named;
+  return points.length > 0 ? { value: points } : undefined;
+}
+
 /** 按 catalog 属性类型清洗一个值；未知/非法 → undefined（丢弃）。 */
 function sanitizeProperty(value: unknown, def: CatalogProperty): A2uiComponentPropertyValue | undefined {
   const max = def.maxLength ?? A2UI_LIMITS.maxString;
@@ -107,6 +150,8 @@ function sanitizeProperty(value: unknown, def: CatalogProperty): A2uiComponentPr
     }
     case "object":
       return isPlainRecord(value) ? value : undefined;
+    case "chart-series":
+      return sanitizeChartSeries(value, def.maxLength ?? 60);
     case "bound":
       return sanitizeBound(value, max);
     default:
@@ -140,6 +185,15 @@ function repairComponent(value: unknown, catalog: A2uiCatalog): A2uiComponent | 
     if (sanitized !== undefined) {
       props[propDef.name] = sanitized;
     }
+  }
+  // 点集数组 `[{ label, value }]` 的 label 与 series 一一对应；只在 labels 缺失时
+  // 补齐，避免覆盖模型显式给出的横轴。该形态是 chart-series 的公开输入格式。
+  if (component === "chart" && props.series !== undefined && !Object.hasOwn(props, "labels") && Array.isArray(value.series)) {
+    const labels = value.series
+      .slice(0, 60)
+      .map((item) => isPlainRecord(item) ? truncateString(item.label, 200) : undefined)
+      .filter((item): item is string => item !== undefined);
+    if (labels.length > 0) props.labels = labels;
   }
   let children: string[] | undefined;
   if (Array.isArray(value.children)) {

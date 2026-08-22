@@ -17,6 +17,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import type { GenericCallView, GenericResultView, ToolResult } from "@deepseek-ai/dsh-tools";
 import type { JsonValue } from "@deepseek-ai/dsh-session";
 import { repairA2uiEnvelope } from "@dsh-a2ui/a2ui-protocol";
+import { A2uiSurfaceStateStore } from "./surface-state.js";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;
 /** tool/result.meta 判别符。 */
@@ -39,6 +40,8 @@ export interface A2uiSurfaceMeta {
 
 const isPlainRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
+
+const surfaceState = new A2uiSurfaceStateStore();
 
 /** 序列化消息数组为 JSONL document。 */
 function serializeDocument(messages: readonly unknown[]): string {
@@ -124,7 +127,6 @@ export function applyA2uiTool(ctx: Context): void {
       // document 走 meta：durable、replayed、永不进入模型可见 content。
       presentationMeta: (_args, value): JsonValue => value.meta,
     },
-    isConcurrencySafe: () => true,
     async execute(args, exec) {
       const messages = args.messages as unknown;
       if (!Array.isArray(messages) || messages.length === 0) {
@@ -138,8 +140,11 @@ export function applyA2uiTool(ctx: Context): void {
       if (repaired === null || !("createSurface" in repaired)) {
         throw new Error("a2ui_render: messages[0] passed structural checks but the guard still rejected it (catalogId/component limits? check the surfaceId is unique and components do not exceed 200)");
       }
-      const document = serializeDocument([repaired]);
-      const componentNames = (repaired.createSurface.components ?? []).map((c) => c.component);
+      // 重绘是完整快照；模型若遗漏已有 chart.series，按同会话、同业务 surface
+      // 回填最后一次 durable 快照中的数据。显式 series: {} 仍表示清空。
+      const merged = surfaceState.merge(exec.agent, repaired);
+      const document = serializeDocument([merged]);
+      const componentNames = (merged.createSurface.components ?? []).map((c) => c.component);
       const surfaceId = String(exec.callId);
       const title = typeof args.title === "string" && args.title.trim().length > 0 ? args.title.trim() : undefined;
       const meta: A2uiSurfaceMeta = {

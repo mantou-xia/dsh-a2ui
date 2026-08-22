@@ -160,6 +160,30 @@ describe("a2ui-protocol: guard", () => {
     expect(cs.components[0]?.["rows"]).toEqual([["02月", "42 万"]]);
   });
 
+  it("normalizes documented chart-series array forms so the first render has data", () => {
+    const repaired = repairA2uiEnvelope(createSurface({
+      components: [{
+        id: "root", component: "chart", kind: "line",
+        series: [{ label: "一月", value: 120 }, { label: "二月", value: 150 }],
+      }],
+    }));
+    const chart = (repaired as TestCreateSurface).createSurface.components[0];
+    expect(chart?.["labels"]).toEqual(["一月", "二月"]);
+    expect(chart?.["series"]).toEqual({ value: [120, 150] });
+  });
+
+  it("normalizes named series data arrays without changing explicit labels", () => {
+    const repaired = repairA2uiEnvelope(createSurface({
+      components: [{
+        id: "root", component: "chart", labels: ["一月", "二月"],
+        series: [{ name: "销售额", data: [120, 150] }],
+      }],
+    }));
+    const chart = (repaired as TestCreateSurface).createSurface.components[0];
+    expect(chart?.["labels"]).toEqual(["一月", "二月"]);
+    expect(chart?.["series"]).toEqual({ 销售额: [120, 150] });
+  });
+
   it("repair is idempotent", () => {
     const input = createSurface({
       components: [

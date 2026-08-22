@@ -33,7 +33,8 @@ describe("a2ui-adapter", () => {
     expect(sections).toHaveLength(1);
     expect(sections[0]?.name).toBe(A2UI_SECTION_NAME);
     expect(sections[0]?.order).toBe(A2UI_SECTION_ORDER);
-    expect(sections[0]?.text).toBe(A2UI_TEACHING);
+    expect(sections[0]?.text).toContain(A2UI_TEACHING);
+    expect(sections[0]?.text).toContain("Chart data contract");
     expect(tools.map((tool) => tool.name)).toContain(A2UI_TOOL_NAME);
   });
 
