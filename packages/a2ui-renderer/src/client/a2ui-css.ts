@@ -71,6 +71,10 @@ export const A2UI_CSS = `
 }
 .a2ui-table td { color: var(--dsw-alias-label-primary, #111); }
 .a2ui-chart-title { font-size: 13px; margin-bottom: 6px; }
+.a2ui-chart {
+  width: min(100%, 560px);
+  height: 240px;
+}
 .a2ui-button {
   padding: 6px 14px;
   border: 1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.35));

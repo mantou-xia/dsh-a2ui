@@ -12,6 +12,13 @@ import type { A2uiChatData } from "../chat-data.ts";
 import { A2uiNodeView, type A2uiNodeProps } from "./A2uiNodeView.tsx";
 import type { UiAction } from "../dispatch.ts";
 
+const echarts = vi.hoisted(() => {
+  const chart = { dispose: vi.fn(), resize: vi.fn(), setOption: vi.fn() };
+  return { chart, init: vi.fn(() => chart) };
+});
+
+vi.mock("echarts/dist/echarts.esm.mjs", () => echarts);
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -69,7 +76,7 @@ describe("A2uiNodeView: 静态组件渲染", () => {
     expect(screen.getByText("2月")).not.toBeNull();
   });
 
-  it("renders chart svg and callout", () => {
+  it("renders an ECharts chart container and callout", () => {
     renderNode(surfaceData({
       surfaceId: "report-1",
       catalogId: "dsh-basic",
@@ -80,7 +87,8 @@ describe("A2uiNodeView: 静态组件渲染", () => {
       ],
     }));
     expect(screen.getByText("趋势")).not.toBeNull();
-    expect(document.querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("img", { name: "bars chart" })).not.toBeNull();
+    expect(echarts.init).toHaveBeenCalledTimes(1);
     expect(screen.getByText("注意")).not.toBeNull();
   });
 });
