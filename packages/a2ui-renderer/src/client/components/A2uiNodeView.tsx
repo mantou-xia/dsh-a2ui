@@ -20,6 +20,7 @@ import {
 } from "./static.tsx";
 import {
   ButtonView,
+  DataModelContext,
   FieldSetContext,
   FieldValuesContext,
   FormView,
@@ -42,10 +43,12 @@ function ComponentNode({
   component,
   components,
   emit,
+  colorScheme,
 }: {
   component: A2uiComponent;
   components: Map<string, A2uiComponent>;
   emit: (componentId: string, action: { name: string; payload?: unknown }) => void;
+  colorScheme: "light" | "dark";
 }): ReactNode {
   const children = useMemo(
     () =>
@@ -55,7 +58,7 @@ function ComponentNode({
     [component.children, components],
   );
   const childNodes = children.map((child) => (
-    <ComponentNode key={child.id} component={child} components={components} emit={emit} />
+    <ComponentNode key={child.id} component={child} components={components} emit={emit} colorScheme={colorScheme} />
   ));
   switch (component.component) {
     case "stat":
@@ -63,7 +66,7 @@ function ComponentNode({
     case "table":
       return <TableView component={component} />;
     case "chart":
-      return <ChartView component={component} />;
+      return <ChartView component={component} colorScheme={colorScheme} />;
     case "card":
       return <CardView component={component}>{childNodes}</CardView>;
     case "grid":
@@ -95,9 +98,11 @@ function ComponentNode({
 function SurfaceView({
   snapshot,
   sendAction,
+  colorScheme,
 }: {
   snapshot: A2uiSurfaceSnapshot;
   sendAction: (action: UiAction) => void;
+  colorScheme: "light" | "dark";
 }): ReactNode {
   const components = useMemo(
     () => new Map(snapshot.components.map((item) => [item.id, item])),
@@ -117,7 +122,9 @@ function SurfaceView({
   }, [sendAction, snapshot.surfaceId]);
   return (
     <div className="a2ui-surface" data-a2ui-surface={snapshot.surfaceId}>
-      <ComponentNode component={root} components={components} emit={emit} />
+      <DataModelContext.Provider value={snapshot.dataModel ?? {}}>
+        <ComponentNode component={root} components={components} emit={emit} colorScheme={colorScheme} />
+      </DataModelContext.Provider>
     </div>
   );
 }
@@ -126,6 +133,7 @@ function SurfaceView({
 export const A2uiNodeView = memo(function A2uiNodeView({
   node,
   sendAction,
+  colorScheme,
 }: A2uiNodeProps) {
   const surfaces = [...node.data.surfaces.values()];
   const fieldValues = useRef(new Map<string, string>());
@@ -145,6 +153,7 @@ export const A2uiNodeView = memo(function A2uiNodeView({
               key={surface.surfaceId}
               snapshot={surface.snapshot}
               sendAction={sendAction}
+              colorScheme={colorScheme}
             />
           ))}
         </div>

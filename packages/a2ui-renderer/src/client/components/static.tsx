@@ -73,13 +73,13 @@ export function normalizeChartKind(value: string): "bars" | "line" | "donut" {
   return value === "line" || value === "donut" ? value : "bars";
 }
 
-export function ChartView({ component }: { component: A2uiComponent }): ReactNode {
+export function ChartView({ component, colorScheme }: { component: A2uiComponent; colorScheme: "light" | "dark" }): ReactNode {
   const title = str(component, "title");
   const labels = strArr(component, "labels");
   const series = readSeries(component["series"]);
   const kind = normalizeChartKind(str(component, "kind"));
   const hasData = series.some((item) => item.values.length > 0);
-  const option = useMemo(() => createChartOption(kind, labels, series), [kind, labels, series]);
+  const option = useMemo(() => createChartOption(kind, labels, series, colorScheme), [kind, labels, series, colorScheme]);
   return (
     <div>
       {title && <div className="a2ui-chart-title">{title}</div>}

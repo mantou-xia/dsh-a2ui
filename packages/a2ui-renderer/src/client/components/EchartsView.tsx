@@ -17,12 +17,14 @@ function axisLabels(labels: string[], series: ChartSeries): string[] {
 }
 
 /** 将 dsh-basic 的已清洗 chart 属性映射为 ECharts option。 */
-export function createChartOption(kind: ChartKind, labels: string[], series: ChartSeries): EChartsOption {
+export function createChartOption(kind: ChartKind, labels: string[], series: ChartSeries, colorScheme: "light" | "dark" = "light"): EChartsOption {
+  const textColor = colorScheme === "dark" ? "#e6e6e6" : "#303133";
+  const axisColor = colorScheme === "dark" ? "#5a5a5a" : "#d9d9d9";
   if (kind === "donut") {
     return {
       color: CHART_COLORS,
-      tooltip: { trigger: "item" },
-      legend: { bottom: 0, type: "scroll" },
+      tooltip: { trigger: "item", textStyle: { color: textColor } },
+      legend: { bottom: 0, type: "scroll", textStyle: { color: textColor } },
       series: [{
         type: "pie",
         radius: ["42%", "68%"],
@@ -34,10 +36,10 @@ export function createChartOption(kind: ChartKind, labels: string[], series: Cha
 
   const option: EChartsOption = {
     color: CHART_COLORS,
-    tooltip: { trigger: "axis" },
+    tooltip: { trigger: "axis", textStyle: { color: textColor } },
     grid: { top: series.length > 1 ? 38 : 16, right: 16, bottom: 32, left: 40, containLabel: true },
-    xAxis: { type: "category", data: axisLabels(labels, series), axisTick: { alignWithLabel: true } },
-    yAxis: { type: "value", minInterval: 1 },
+    xAxis: { type: "category", data: axisLabels(labels, series), axisTick: { alignWithLabel: true }, axisLabel: { color: textColor }, axisLine: { lineStyle: { color: axisColor } } },
+    yAxis: { type: "value", minInterval: 1, axisLabel: { color: textColor }, splitLine: { lineStyle: { color: axisColor } } },
     series: series.map((item) => ({
       name: item.name,
       type: kind === "line" ? "line" : "bar",
@@ -46,7 +48,7 @@ export function createChartOption(kind: ChartKind, labels: string[], series: Cha
       emphasis: { focus: "series" },
     })),
   };
-  if (series.length > 1) option.legend = { top: 0, type: "scroll" };
+  if (series.length > 1) option.legend = { top: 0, type: "scroll", textStyle: { color: textColor } };
   return option;
 }
 
