@@ -17,7 +17,7 @@ const echarts = vi.hoisted(() => {
   return { chart, init: vi.fn(() => chart) };
 });
 
-vi.mock("echarts/dist/echarts.esm.mjs", () => echarts);
+vi.mock("echarts/dist/echarts.common.js", () => echarts);
 
 afterEach(() => {
   cleanup();

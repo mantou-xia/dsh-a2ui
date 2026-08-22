@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import type { ECharts, EChartsOption } from "echarts/dist/echarts.esm.mjs";
-import * as echarts from "echarts/dist/echarts.esm.mjs";
+import type { ECharts, EChartsOption } from "echarts/dist/echarts.common.js";
+import * as echarts from "echarts/dist/echarts.common.js";
 
 export type ChartSeries = Array<{ name: string; values: number[] }>;
 export type ChartKind = "bars" | "line" | "donut";

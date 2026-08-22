@@ -48,6 +48,9 @@ const clientConfig: UserConfig = {
   dts: false,
   clean: false,
   external: [...CLIENT_EXTERNALS],
+  deps: {
+    alwaysBundle: ["echarts/dist/echarts.common.js"],
+  },
   define: {
     "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),
     "import.meta.env.MODE": JSON.stringify(process.env.NODE_ENV ?? "production"),
