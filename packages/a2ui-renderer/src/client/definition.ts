@@ -25,8 +25,9 @@ import {
   isA2uiEnvelope,
   repairA2uiDocument,
   reduceA2uiDocument,
+  reduceA2uiEnvelope,
 } from "@dsh-a2ui/a2ui-protocol";
-import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiEnvelope, A2uiSurfaceMap, A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
 import type { A2uiChatData, A2uiSurfaceState } from "./chat-data.ts";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;
@@ -42,13 +43,15 @@ interface A2uiDefinitionState {
   /** 落定后的权威 surface（工具结果）。 */
   settled: ReadonlyMap<string, A2uiSurfaceState> | null;
   preview: ReadonlyMap<string, A2uiSurfaceState> | null;
+  /** 已归约的完整流式 envelope，避免每个 chunk 重放历史 document。 */
+  previewCache: A2uiArgumentPreviewCache | null;
   /** 渲染锚点：工具调用事件的 seq（流中位置）。 */
   anchorSeq: number | null;
   location: ConversationLocation | null;
 }
 
 function initial(): A2uiDefinitionState {
-  return { renderIndex: null, surfaceId: null, argsRaw: "", settled: null, preview: null, anchorSeq: null, location: null };
+  return { renderIndex: null, surfaceId: null, argsRaw: "", settled: null, preview: null, previewCache: null, anchorSeq: null, location: null };
 }
 
 /** tool/result.meta 判别。 */
@@ -149,10 +152,52 @@ export function snapshotsFromArguments(argsRaw: string): ReadonlyMap<string, A2u
   return repaired === null ? new Map() : reduceA2uiDocument(repaired);
 }
 
-function previewFromArguments(argsRaw: string, seq: number): ReadonlyMap<string, A2uiSurfaceState> | null {
-  const snapshots = snapshotsFromArguments(argsRaw);
-  if (snapshots.size === 0) return null;
-  return new Map([...snapshots.values()].map((snapshot) => [snapshot.surfaceId, { surfaceId: snapshot.surfaceId, snapshot, seq }]));
+/** 已通过 guard 的流式消息与归约结果；只在完整 envelope 增加时更新。 */
+export interface A2uiArgumentPreviewCache {
+  readonly completeMessageCount: number;
+  readonly acceptedMessageCount: number;
+  readonly snapshots: ReadonlyMap<string, A2uiSurfaceSnapshot>;
+}
+
+/**
+ * 以追加式 arguments 更新 preview cache。guard 仍校验完整 document，但已验证
+ * 的 surface 只应用新增 envelope，不在每个 chunk 重放所有历史生命周期消息。
+ */
+export function updateArgumentPreviewCache(
+  previous: A2uiArgumentPreviewCache | null,
+  argsRaw: string,
+): A2uiArgumentPreviewCache | null {
+  const messages = completeMessageObjects(argsRaw);
+  if (previous !== null && messages.length === previous.completeMessageCount) return previous;
+  if (previous !== null && messages.length < previous.completeMessageCount) return null;
+  const repaired = repairA2uiDocument(messages);
+  if (repaired === null) return previous;
+  const startingIndex = previous?.acceptedMessageCount ?? 0;
+  if (startingIndex > repaired.length) return null;
+  const snapshots: A2uiSurfaceMap = new Map(previous?.snapshots);
+  for (const message of repaired.slice(startingIndex) as A2uiEnvelope[]) {
+    reduceA2uiEnvelope(snapshots, message);
+  }
+  return {
+    completeMessageCount: messages.length,
+    acceptedMessageCount: repaired.length,
+    snapshots,
+  };
+}
+
+function previewFromArguments(
+  argsRaw: string,
+  seq: number,
+  previous: A2uiArgumentPreviewCache | null,
+): { cache: A2uiArgumentPreviewCache | null; surfaces: ReadonlyMap<string, A2uiSurfaceState> | null; changed: boolean } {
+  const cache = updateArgumentPreviewCache(previous, argsRaw);
+  if (cache === null || cache.snapshots.size === 0) return { cache, surfaces: null, changed: cache !== previous };
+  if (cache === previous) return { cache, surfaces: null, changed: false };
+  return {
+    cache,
+    surfaces: new Map([...cache.snapshots.values()].map((snapshot) => [snapshot.surfaceId, { surfaceId: snapshot.surfaceId, snapshot, seq }])),
+    changed: true,
+  };
 }
 
 function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDefinitionState {
@@ -173,7 +218,7 @@ function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDe
     }
     if (renderIndex !== null && chunk.index === renderIndex) {
       const argsRaw = startsNewRender ? chunk.argumentsDelta : state.argsRaw + chunk.argumentsDelta;
-      const parsedPreview = previewFromArguments(argsRaw, event.seq);
+      const previewUpdate = previewFromArguments(argsRaw, event.seq, startsNewRender ? null : state.previewCache);
       return {
         ...state,
         renderIndex,
@@ -182,7 +227,8 @@ function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDe
         location,
         argsRaw,
         settled: startsNewRender ? null : state.settled,
-        preview: parsedPreview ?? (startsNewRender ? null : state.preview),
+        preview: previewUpdate.surfaces ?? (startsNewRender ? null : state.preview),
+        previewCache: previewUpdate.cache,
       };
     }
     return { ...state, renderIndex, surfaceId, anchorSeq, location };

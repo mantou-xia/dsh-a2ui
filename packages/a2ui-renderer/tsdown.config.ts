@@ -47,9 +47,11 @@ const clientConfig: UserConfig = {
   sourcemap: true,
   dts: false,
   clean: false,
-  external: [...CLIENT_EXTERNALS],
   deps: {
-    alwaysBundle: ["echarts/dist/echarts.common.js"],
+    neverBundle: [...CLIENT_EXTERNALS],
+    // tsdown resolves these as distinct subpaths; bundle exactly the imports
+    // registered by EchartsView instead of the full echarts.common build.
+    alwaysBundle: ["echarts/core", "echarts/charts", "echarts/components", "echarts/renderers"],
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),

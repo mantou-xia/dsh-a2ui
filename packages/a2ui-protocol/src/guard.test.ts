@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   A2UI_LIMITS,
   DSH_BASIC_CATALOG_ID,
+  inspectA2uiDocument,
   reduceA2uiDocument,
   repairA2uiDocument,
   repairA2uiEnvelope,
@@ -232,5 +233,36 @@ describe("a2ui-protocol: guard", () => {
       createSurface(),
       { version: "v0.9.1", action: { name: "refresh", surfaceId: "s-1" } },
     ])).toBeNull();
+  });
+
+  it("reports dropped components/properties without putting raw values into diagnostics", () => {
+    const inspection = inspectA2uiDocument([createSurface({
+      components: [
+        { id: "root", component: "grid", columns: 1, children: ["safe", "island"] },
+        { id: "safe", component: "stat", label: "safe", secret: "never expose" },
+        { id: "island", component: "password", token: "never expose" },
+      ],
+    })]);
+    expect(inspection.document).not.toBeNull();
+    expect(inspection.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "property-dropped", path: "messages[0].createSurface.components[1].secret" }),
+      expect.objectContaining({ code: "component-dropped", path: "messages[0].createSurface.components[2]" }),
+    ]));
+    expect(JSON.stringify(inspection.diagnostics)).not.toContain("never expose");
+    expect(inspection.stats).toMatchObject({ droppedComponentCount: 1, droppedPropertyCount: 1 });
+  });
+
+  it("reports the offending lifecycle target when a document is rejected", () => {
+    const inspection = inspectA2uiDocument([
+      createSurface(),
+      { version: "v0.9.1", updateComponents: { surfaceId: "missing", components: [{ id: "root", component: "stat" }] } },
+    ]);
+    expect(inspection.document).toBeNull();
+    expect(inspection.diagnostics).toContainEqual(expect.objectContaining({
+      severity: "error",
+      code: "lifecycle-rejected",
+      path: "messages[1].updateComponents.surfaceId",
+    }));
+    expect(inspection.stats.rejectedLifecycleCount).toBe(1);
   });
 });

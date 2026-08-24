@@ -2,8 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import type { ECharts, EChartsOption } from "echarts/dist/echarts.common.js";
-import * as echarts from "echarts/dist/echarts.common.js";
+import { BarChart, LineChart, PieChart } from "echarts/charts";
+import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
+import { init, use } from "echarts/core";
+import type { ECharts, EChartsOption } from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
+
+// Keep the client bundle limited to catalog-supported chart kinds and their UI primitives.
+use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
 
 export type ChartSeries = Array<{ name: string; values: number[] }>;
 export type ChartKind = "bars" | "line" | "donut";
@@ -59,7 +65,7 @@ export function EchartsView({ option, label }: { option: EChartsOption; label: s
   useEffect(() => {
     const container = containerRef.current;
     if (container === null) return undefined;
-    const chart = echarts.init(container, undefined, { renderer: "canvas" });
+    const chart = init(container, undefined, { renderer: "canvas" });
     chartRef.current = chart;
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => chart.resize());
     observer?.observe(container);

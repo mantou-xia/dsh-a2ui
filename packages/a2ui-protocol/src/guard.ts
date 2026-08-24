@@ -8,8 +8,8 @@
  *   不自动补 root）——结构错误尽量安全丢弃，必要时丢弃整个 surface；
  * - `repairA2uiEnvelope` 幂等：同一输入修复结果稳定。
  *
- * MVP 只处理 createSurface（= 完整 Surface Snapshot）；
- * 其余消息 kind 返回 null（Renderer 未来版本再扩展）。
+ * 完整 document 支持 create/update/delete 生命周期；基础 repair 路径保持
+ * 无副作用，工具落定时可调用 inspectA2uiDocument 获取诊断与统计。
  */
 
 import { getCatalogComponent, isCatalogComponent, resolveCatalog } from "./catalog/dsh-basic.js";
@@ -357,7 +357,7 @@ function repairDeleteSurface(value: Record<string, unknown>): A2uiDeleteSurface 
  * existing one. Action/error envelopes are intentionally not accepted here:
  * `a2ui_render` persists a UI document, not client-to-agent traffic.
  */
-export function repairA2uiDocument(input: readonly unknown[]): A2uiEnvelope[] | null {
+function repairA2uiDocumentInternal(input: readonly unknown[]): A2uiEnvelope[] | null {
   if (input.length === 0) {
     return null;
   }
@@ -413,4 +413,158 @@ export function repairA2uiDocument(input: readonly unknown[]): A2uiEnvelope[] | 
   }
   const first = repaired[0];
   return first !== undefined && "createSurface" in first ? repaired : null;
+}
+
+/** Guard 输出的可持久化诊断。path 指向原始 messages 参数中的字段。 */
+export interface A2uiGuardDiagnostic {
+  readonly severity: "warning" | "error";
+  readonly code: "component-dropped" | "property-dropped" | "lifecycle-rejected" | "document-rejected";
+  readonly path: string;
+  readonly message: string;
+}
+
+/** 用于工具详情的轻量级 guard 统计，不包含任何用户业务数据。 */
+export interface A2uiGuardStats {
+  readonly inputEnvelopeCount: number;
+  readonly acceptedEnvelopeCount: number;
+  readonly inputComponentCount: number;
+  readonly retainedComponentCount: number;
+  readonly droppedComponentCount: number;
+  readonly droppedPropertyCount: number;
+  readonly rejectedLifecycleCount: number;
+}
+
+export interface A2uiDocumentInspection {
+  readonly document: A2uiEnvelope[] | null;
+  readonly diagnostics: readonly A2uiGuardDiagnostic[];
+  readonly stats: A2uiGuardStats;
+}
+
+const COMPONENT_STRUCTURAL_KEYS = new Set(["id", "component", "children"]);
+
+function operationName(value: Record<string, unknown>): "createSurface" | "updateComponents" | "updateDataModel" | "deleteSurface" | undefined {
+  const names = ["createSurface", "updateComponents", "updateDataModel", "deleteSurface"] as const;
+  return names.find((name) => name in value);
+}
+
+function reportComponentFiltering(
+  raw: Record<string, unknown>,
+  repaired: A2uiEnvelope,
+  index: number,
+  diagnostics: A2uiGuardDiagnostic[],
+  stats: { inputComponentCount: number; retainedComponentCount: number; droppedComponentCount: number; droppedPropertyCount: number },
+): void {
+  const operation = operationName(raw);
+  if (operation !== "createSurface" && operation !== "updateComponents") return;
+  const rawPayload = raw[operation];
+  const repairedPayload = operation === "createSurface"
+    ? ("createSurface" in repaired ? repaired.createSurface : undefined)
+    : ("updateComponents" in repaired ? repaired.updateComponents : undefined);
+  if (!isPlainRecord(rawPayload) || !isPlainRecord(repairedPayload) || !Array.isArray(rawPayload.components) || !Array.isArray(repairedPayload.components)) {
+    return;
+  }
+  stats.inputComponentCount += rawPayload.components.length;
+  stats.retainedComponentCount += repairedPayload.components.length;
+  const retainedById = new Map(
+    repairedPayload.components
+      .map((component) => [component.id, component]),
+  );
+  rawPayload.components.forEach((component, componentIndex) => {
+    const path = `messages[${index}].${operation}.components[${componentIndex}]`;
+    if (!isPlainRecord(component) || typeof component.id !== "string") {
+      stats.droppedComponentCount++;
+      diagnostics.push({ severity: "warning", code: "component-dropped", path, message: "Component was dropped because it has no valid id or component declaration." });
+      return;
+    }
+    const retained = retainedById.get(component.id);
+    if (retained === undefined) {
+      stats.droppedComponentCount++;
+      diagnostics.push({ severity: "warning", code: "component-dropped", path, message: `Component '${component.id}' was dropped by catalog or reachability validation.` });
+      return;
+    }
+    for (const property of Object.keys(component)) {
+      if (COMPONENT_STRUCTURAL_KEYS.has(property)) continue;
+      if (!Object.hasOwn(retained, property)) {
+        stats.droppedPropertyCount++;
+        diagnostics.push({ severity: "warning", code: "property-dropped", path: `${path}.${property}`, message: `Property '${property}' was removed because it is unknown or invalid for component '${component.id}'.` });
+      }
+    }
+  });
+}
+
+function reportRejectedLifecycle(
+  input: readonly unknown[],
+  diagnostics: A2uiGuardDiagnostic[],
+  stats: { rejectedLifecycleCount: number },
+): void {
+  const knownSurfaces = new Set<string>();
+  input.forEach((item, index) => {
+    const path = `messages[${index}]`;
+    if (!isPlainRecord(item) || item.version !== A2UI_VERSION) {
+      stats.rejectedLifecycleCount++;
+      diagnostics.push({ severity: "error", code: "document-rejected", path, message: "Envelope is not a valid A2UI v0.9.1 object." });
+      return;
+    }
+    const operation = operationName(item);
+    if (operation === undefined || !isPlainRecord(item[operation])) {
+      stats.rejectedLifecycleCount++;
+      diagnostics.push({ severity: "error", code: "document-rejected", path, message: "Envelope must contain one supported lifecycle operation." });
+      return;
+    }
+    const payload = item[operation];
+    const surfaceId = typeof payload.surfaceId === "string" ? payload.surfaceId : undefined;
+    if (operation === "createSurface" && surfaceId !== undefined) {
+      knownSurfaces.add(surfaceId);
+      return;
+    }
+    if (operation === "updateDataModel" && payload.path !== undefined && (typeof payload.path !== "string" || (payload.path.length > 0 && !payload.path.startsWith("/")))) {
+      stats.rejectedLifecycleCount++;
+      diagnostics.push({ severity: "error", code: "lifecycle-rejected", path: `${path}.updateDataModel.path`, message: "Data-model path must be a JSON Pointer beginning with '/'." });
+      return;
+    }
+    if (surfaceId === undefined || !knownSurfaces.has(surfaceId)) {
+      stats.rejectedLifecycleCount++;
+      diagnostics.push({ severity: "error", code: "lifecycle-rejected", path: `${path}.${operation}.surfaceId`, message: `Lifecycle operation targets missing surface '${surfaceId ?? ""}'.` });
+      return;
+    }
+    if (operation === "deleteSurface") knownSurfaces.delete(surfaceId);
+  });
+  if (diagnostics.length === 0) {
+    diagnostics.push({ severity: "error", code: "document-rejected", path: "messages", message: "Document was rejected by structural validation." });
+  }
+}
+
+/**
+ * Repairs a document and returns an audit trail suitable for tool/result.meta.
+ * The diagnostics intentionally contain paths and rule outcomes only, never raw
+ * component values or data-model values.
+ */
+export function inspectA2uiDocument(input: readonly unknown[]): A2uiDocumentInspection {
+  const document = repairA2uiDocumentInternal(input);
+  const diagnostics: A2uiGuardDiagnostic[] = [];
+  const mutableStats = {
+    inputEnvelopeCount: input.length,
+    acceptedEnvelopeCount: document?.length ?? 0,
+    inputComponentCount: 0,
+    retainedComponentCount: 0,
+    droppedComponentCount: 0,
+    droppedPropertyCount: 0,
+    rejectedLifecycleCount: 0,
+  };
+  if (document === null) {
+    reportRejectedLifecycle(input, diagnostics, mutableStats);
+  } else {
+    input.forEach((raw, index) => {
+      const repaired = document[index];
+      if (isPlainRecord(raw) && repaired !== undefined) {
+        reportComponentFiltering(raw, repaired, index, diagnostics, mutableStats);
+      }
+    });
+  }
+  return { document, diagnostics, stats: mutableStats };
+}
+
+/** 修复完整 A2UI document；需要诊断时使用 inspectA2uiDocument。 */
+export function repairA2uiDocument(input: readonly unknown[]): A2uiEnvelope[] | null {
+  return repairA2uiDocumentInternal(input);
 }

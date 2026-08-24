@@ -14,10 +14,10 @@ import type { UiAction } from "../dispatch.ts";
 
 const echarts = vi.hoisted(() => {
   const chart = { dispose: vi.fn(), resize: vi.fn(), setOption: vi.fn() };
-  return { chart, init: vi.fn(() => chart) };
+  return { chart, init: vi.fn(() => chart), use: vi.fn() };
 });
 
-vi.mock("echarts/dist/echarts.common.js", () => echarts);
+vi.mock("echarts/core", () => echarts);
 
 afterEach(() => {
   cleanup();

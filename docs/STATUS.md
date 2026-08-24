@@ -63,7 +63,7 @@
 pnpm check
   lint:       通过
   typecheck:  三包通过
-  vitest:     13 files / 62 tests 通过
+  vitest:     13 files / 65 tests 通过
 
 pnpm -r run build
   adapter:    通过
@@ -75,6 +75,12 @@ DSH Web smoke test
   UI:         ECharts + 双 surface + updateComponents + dataModel=08
   actions:    button refresh + form query(month=08)
   theme:      浅色 -> 深色实时切换通过
+
+P3 release smoke test
+  profile:    web bundle 安装后 SHA-256 校验通过
+  UI:         ECharts bars 图表实际渲染（"一月/二月", 销售额 120/150）
+  guard:      unknownDebug 被过滤，工具结果显示 1 validation warning
+  console:    0 errors / 0 warnings
 ```
 
 ## 4. 当前边界
@@ -82,22 +88,23 @@ DSH Web smoke test
 1. 新的 `a2ui_render` 调用代表新的完整 document。若 action 后重绘仍需保留绑定值，模型必须在新调用中重复发送 `updateDataModel`；系统不会猜测任意业务 dataModel 的跨调用合并规则。
 2. chart 仅对同 surface、同组件 id、同类型图表中遗漏的 `labels` / `series` 做安全回填；显式空值仍表示业务方确实要清空。
 3. catalog 当前只开放十个组件，以保持 guard、样式和 action 语义可控。
-4. ECharts 打入 client bundle，当前约 1.74 MB；首次加载成本仍有优化空间。
+4. ECharts 已按需注册，client bundle 由约 1.74 MB 降至约 1.32 MB；首次加载成本仍可继续通过延迟加载优化。
 5. DSH API 尚可能发生破坏性变化；runtime guard 能把问题显性化，但不能替代升级后的真实回归。
 
 ## 5. 后续开发与优化方向
 
 ### 优先级 A：可靠性与发布工程
 
-- 建立固定 DSH 版本矩阵，在 CI 中对当前支持版本执行 bundle 加载、历史回放 fixture 和浏览器 smoke test。
-- 为 profile 安装增加可重复的备份、覆盖、哈希校验和回滚脚本，消除“工作区已构建但 profile 仍是旧 bundle”的环境差异。
-- 增加 guard warning 明细与可观测指标，让被丢弃字段、组件和不合法生命周期在调试面板中可见。
+- ✅ 固定 DSH 版本矩阵已落地：GitHub Actions 对 `0.1.0-rc.5` 与 `0.1.1-rc.2` 分别重写开发依赖、重新安装、执行 `pnpm check` 与 bundle 构建；稳定基线 job 使用锁文件执行同样的质量门禁。
+- 浏览器 smoke test 仍需在拥有真实 DSH Web profile 的环境执行；本地 profile smoke 作为第 2 项部署脚本的一部分提供，避免 CI 在没有宿主配置时伪造浏览器成功。
+- ✅ profile bundle 部署已脚本化：`scripts/Install-DshProfileBundle.ps1` 在覆盖前备份 adapter/renderer bundle，生成 manifest，覆盖后逐文件 SHA-256 验证，并支持按备份名回滚。
+- ✅ guard 可观测性已落地：`inspectA2uiDocument` 输出无业务值泄露的路径级 diagnostics 与统计；adapter 将其写入 `tool/result.meta`，可在 DSH 工具详情查看字段/组件丢弃和非法生命周期原因。
 
 ### 优先级 B：性能
 
-- 改为 ECharts core + 按需 chart/component 注册，减少 client bundle。
+- ✅ ECharts core + 按需 chart/component 注册已完成，client bundle 实测由约 1.74 MB 降至约 1.32 MB。
 - 在 surface 很大时按 component subtree memo、虚拟化长表格，并限制高频流式预览刷新。
-- 对多 surface 大 document 做增量归约缓存，避免每个 chunk 重放全部历史消息。
+- ✅ 流式 preview 已缓存已验证的完整 envelope，只对新完成的生命周期消息增量归约；未新增完整消息的 chunk 复用已有快照。
 
 ### 优先级 C：组件与业务能力
 

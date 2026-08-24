@@ -73,11 +73,14 @@ describe("a2ui-adapter", () => {
       ],
     }, { agent: {}, callId: "call-1" });
 
-    const meta = (result as { meta: { document: string; componentNames: string[] } }).meta;
+    const meta = (result as { meta: { document: string; componentNames: string[]; warningCount: number; diagnostics: Array<{ path: string }>; guardStats: { droppedPropertyCount: number } } }).meta;
     expect(meta.document.split("\n")).toHaveLength(4);
     expect(meta.document).toContain('"label":"After"');
     expect(meta.document).not.toContain("ignored");
     expect(meta.componentNames).toEqual(["stat"]);
+    expect(meta.warningCount).toBe(1);
+    expect(meta.diagnostics).toContainEqual(expect.objectContaining({ path: "messages[1].updateComponents.components[0].ignored" }));
+    expect(meta.guardStats.droppedPropertyCount).toBe(1);
   });
 
   it("reports the exact lifecycle envelope whose version is missing", async () => {

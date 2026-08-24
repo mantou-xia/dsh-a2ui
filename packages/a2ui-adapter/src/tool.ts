@@ -16,7 +16,11 @@ import type { Context } from "@deepseek-ai/cordis";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import type { GenericCallView, GenericResultView, ToolResult } from "@deepseek-ai/dsh-tools";
 import type { JsonValue } from "@deepseek-ai/dsh-session";
-import { reduceA2uiDocument, repairA2uiDocument } from "@dsh-a2ui/a2ui-protocol";
+import {
+  inspectA2uiDocument,
+  reduceA2uiDocument,
+} from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiGuardDiagnostic, A2uiGuardStats } from "@dsh-a2ui/a2ui-protocol";
 import { A2uiSurfaceStateStore } from "./surface-state.js";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;
@@ -34,8 +38,12 @@ export interface A2uiSurfaceMeta {
   title?: string;
   /** 渲染的组件类型名列表。 */
   componentNames: string[];
-  /** 被 guard 丢弃的组件数。 */
+  /** guard 发出的非致命警告数。 */
   warningCount: number;
+  /** 可在 DSH 工具详情中审计的字段/组件过滤结果（不含原始业务值）。 */
+  diagnostics: readonly A2uiGuardDiagnostic[];
+  /** guard 的结构化统计。 */
+  guardStats: A2uiGuardStats;
 }
 
 const isPlainRecord = (v: unknown): v is Record<string, unknown> =>
@@ -144,7 +152,7 @@ export function applyA2uiTool(ctx: Context): void {
       },
       render: (_args, value) => {
         const names = value.componentNames.join(", ");
-        const warned = value.warningCount > 0 ? ` (${value.warningCount} component(s) dropped by validation)` : "";
+        const warned = value.warningCount > 0 ? ` (${value.warningCount} validation warning(s); inspect tool details)` : "";
         return [{
           type: "text",
           text: `Rendered an interactive UI (surface ${value.surfaceId}) with ${value.componentNames.length} component type(s): ${names}${warned}. It is shown to the user inline — do not repeat it as text.`,
@@ -163,10 +171,13 @@ export function applyA2uiTool(ctx: Context): void {
       // 详细诊断（model-visible 错误）后让 guard 修一次（防御）。
       validateCreateSurfaceMessage(envelope);
       validateDocumentMessages(messages);
-      const repairedDocument = repairA2uiDocument(messages);
+      const inspection = inspectA2uiDocument(messages);
+      const repairedDocument = inspection.document;
       const repairedFirst = repairedDocument?.[0];
       if (repairedFirst === undefined || !("createSurface" in repairedFirst)) {
-        throw new Error("a2ui_render: the document passed envelope checks but the guard rejected its lifecycle sequence or payload (check surfaceId targets, JSON Pointer paths, catalogId, and the 200-component limit)");
+        const diagnostic = inspection.diagnostics.find((item) => item.severity === "error");
+        const detail = diagnostic === undefined ? "check surfaceId targets, JSON Pointer paths, catalogId, and the 200-component limit" : `${diagnostic.path}: ${diagnostic.message}`;
+        throw new Error(`a2ui_render: guard rejected the document: ${detail}`);
       }
       // 重绘是完整快照；模型若遗漏已有 chart.series，按同会话、同业务 surface
       // 回填最后一次 durable 快照中的数据。显式 series: {} 仍表示清空。
@@ -182,13 +193,15 @@ export function applyA2uiTool(ctx: Context): void {
         surfaceId,
         document,
         componentNames: [...new Set(componentNames)],
-        warningCount: 0,
+        warningCount: inspection.diagnostics.length,
+        diagnostics: inspection.diagnostics,
+        guardStats: inspection.stats,
         ...(title !== undefined ? { title } : {}),
       };
       return {
         surfaceId,
         componentNames: [...new Set(componentNames)],
-        warningCount: 0,
+        warningCount: inspection.diagnostics.length,
         meta: meta as unknown as JsonValue,
       };
     },

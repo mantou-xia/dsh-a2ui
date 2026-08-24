@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { A2uiChatData } from "./chat-data.ts";
-import { buildA2uiViewNode, snapshotsFromArguments, snapshotsFromDocument } from "./definition.ts";
+import { buildA2uiViewNode, snapshotsFromArguments, snapshotsFromDocument, updateArgumentPreviewCache } from "./definition.ts";
 
 describe("a2ui definition document replay", () => {
   it("replays multi-surface documents with updates and deletion", () => {
@@ -42,6 +42,25 @@ describe("a2ui definition document replay", () => {
     expect(snapshots.get("streamed")?.components[0]?.["label"]).toBe("After");
   });
 
+  it("incrementally applies only newly completed lifecycle envelopes", () => {
+    const first = JSON.stringify({
+      messages: [{ version: "v0.9.1", createSurface: { surfaceId: "streamed", components: [{ id: "root", component: "stat", label: "Before" }] } }],
+    }).slice(0, -2);
+    const firstCache = updateArgumentPreviewCache(null, `${first}, {"version":"v0.9.1","updateComponents":`);
+    expect(firstCache?.snapshots.get("streamed")?.components[0]?.["label"]).toBe("Before");
+
+    const completed = JSON.stringify({
+      messages: [
+        { version: "v0.9.1", createSurface: { surfaceId: "streamed", components: [{ id: "root", component: "stat", label: "Before" }] } },
+        { version: "v0.9.1", updateComponents: { surfaceId: "streamed", components: [{ id: "root", component: "stat", label: "After" }] } },
+      ],
+    });
+    const secondCache = updateArgumentPreviewCache(firstCache, completed);
+    expect(secondCache?.snapshots.get("streamed")?.components[0]?.["label"]).toBe("After");
+    expect(secondCache?.acceptedMessageCount).toBe(2);
+    expect(updateArgumentPreviewCache(secondCache ?? null, `${completed} trailing partial`)).toBe(secondCache);
+  });
+
   it("keeps an anchored node materialized as hidden while no preview is available", () => {
     const node = buildA2uiViewNode({
       key: "a2ui:test",
@@ -52,6 +71,7 @@ describe("a2ui definition document replay", () => {
         argsRaw: "{",
         settled: null,
         preview: null,
+        previewCache: null,
         anchorSeq: 12,
         location: { kind: "unresolved" },
       },
@@ -73,6 +93,7 @@ describe("a2ui definition document replay", () => {
         argsRaw: "",
         settled: null,
         preview: null,
+        previewCache: null,
         anchorSeq: null,
         location: null,
       },

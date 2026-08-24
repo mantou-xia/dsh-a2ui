@@ -1,9 +1,8 @@
 /**
  * a2ui-protocol surface —— surface 形态与构造器。
  *
- * MVP 语义（固定约定）：一个 `createSurface` 消息 = 一个完整可渲染的
- * Surface Snapshot。不遵循官方"创建→增量更新"完整生命周期；新消息到达即
- * `Map.set(surfaceId, newSnapshot)` 整体替换。
+ * Surface 以完整 document 中的 envelope 顺序归约。`reduceA2uiEnvelope`
+ * 是唯一的单消息应用原语，流式 renderer 可安全复用它做增量缓存。
  */
 
 import type { A2uiEnvelope, A2uiCreateSurface, A2uiComponent } from "./messages.js";
@@ -46,37 +45,42 @@ function applyDataModelUpdate(model: Record<string, unknown>, path: string | und
   return root;
 }
 
-/** 按 A2UI envelope 顺序归约完整 document；无前置 createSurface 的增量消息安全忽略。 */
+/** 将一个已验证 envelope 应用到既有 surface Map；无前置 createSurface 的增量消息安全忽略。 */
+export function reduceA2uiEnvelope(surfaces: A2uiSurfaceMap, message: A2uiEnvelope): void {
+  if ("createSurface" in message) {
+    const source = message.createSurface;
+    surfaces.set(source.surfaceId, {
+      surfaceId: source.surfaceId,
+      catalogId: source.catalogId ?? "dsh-basic",
+      ...(source.theme !== undefined ? { theme: source.theme } : {}),
+      ...(source.sendDataModel !== undefined ? { sendDataModel: source.sendDataModel } : {}),
+      components: source.components ?? [],
+      dataModel: {},
+    });
+  } else if ("deleteSurface" in message) {
+    surfaces.delete(message.deleteSurface.surfaceId);
+  } else if ("updateComponents" in message) {
+    const current = surfaces.get(message.updateComponents.surfaceId);
+    if (current === undefined) return;
+    const byId = new Map(current.components.map((component) => [component.id, component]));
+    for (const component of message.updateComponents.components) byId.set(component.id, { ...byId.get(component.id), ...component });
+    surfaces.set(current.surfaceId, { ...current, components: [...byId.values()] });
+  } else if ("updateDataModel" in message) {
+    const current = surfaces.get(message.updateDataModel.surfaceId);
+    if (current !== undefined) {
+      surfaces.set(current.surfaceId, {
+        ...current,
+        dataModel: applyDataModelUpdate(current.dataModel ?? {}, message.updateDataModel.path, message.updateDataModel.value),
+      });
+    }
+  }
+}
+
+/** 按 A2UI envelope 顺序归约完整 document。 */
 export function reduceA2uiDocument(messages: readonly A2uiEnvelope[]): A2uiSurfaceMap {
   const surfaces: A2uiSurfaceMap = new Map();
   for (const message of messages) {
-    if ("createSurface" in message) {
-      const source = message.createSurface;
-      surfaces.set(source.surfaceId, {
-        surfaceId: source.surfaceId,
-        catalogId: source.catalogId ?? "dsh-basic",
-        ...(source.theme !== undefined ? { theme: source.theme } : {}),
-        ...(source.sendDataModel !== undefined ? { sendDataModel: source.sendDataModel } : {}),
-        components: source.components ?? [],
-        dataModel: {},
-      });
-    } else if ("deleteSurface" in message) {
-      surfaces.delete(message.deleteSurface.surfaceId);
-    } else if ("updateComponents" in message) {
-      const current = surfaces.get(message.updateComponents.surfaceId);
-      if (current === undefined) continue;
-      const byId = new Map(current.components.map((component) => [component.id, component]));
-      for (const component of message.updateComponents.components) byId.set(component.id, { ...byId.get(component.id), ...component });
-      surfaces.set(current.surfaceId, { ...current, components: [...byId.values()] });
-    } else if ("updateDataModel" in message) {
-      const current = surfaces.get(message.updateDataModel.surfaceId);
-      if (current !== undefined) {
-        surfaces.set(current.surfaceId, {
-          ...current,
-          dataModel: applyDataModelUpdate(current.dataModel ?? {}, message.updateDataModel.path, message.updateDataModel.value),
-        });
-      }
-    }
+    reduceA2uiEnvelope(surfaces, message);
   }
   return surfaces;
 }

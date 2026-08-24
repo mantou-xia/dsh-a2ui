@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable pnpm 11.7.0
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Check
+        run: pnpm check
+      - name: Build bundles
+        run: pnpm -r run build
+
+  dsh-compatibility:
+    name: DSH compatibility (${{ matrix.dsh-version }})
+    needs: quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dsh-version: [0.1.0-rc.5, 0.1.1-rc.2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable pnpm 11.7.0
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+      - name: Select DSH package family
+        run: node scripts/select-dsh-version.mjs ${{ matrix.dsh-version }}
+      - name: Install selected DSH version
+        run: pnpm install --no-frozen-lockfile
+      - name: Verify selected package versions
+        run: node scripts/select-dsh-version.mjs ${{ matrix.dsh-version }} --verify
+      - name: Typecheck, test, and build
+        run: pnpm check && pnpm -r run build

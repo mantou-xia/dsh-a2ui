@@ -6,8 +6,8 @@
  * 组件采用官方结构 `{ id, component, children?, ...props }`：
  * 扁平列表 + id 引用（adjacency list），根组件 id 必须为 "root"。
  *
- * 注意：协议完整 ≠ Renderer 完整。MVP 只实现 createSurface
- * （= 完整 Surface Snapshot），其余消息定义类型但 Renderer 忽略。
+ * Renderer 会归约 createSurface、updateComponents、updateDataModel 与
+ * deleteSurface；action/error 保留为协议消息，不直接生成 surface 快照。
  */
 
 import type { A2uiBoundValue, A2uiVersion } from "./types.js";
