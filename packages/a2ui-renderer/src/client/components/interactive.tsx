@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { A2uiComponent } from "@dsh-a2ui/a2ui-protocol";
 
@@ -35,6 +35,11 @@ export function InputView({ component }: { component: A2uiComponent }): ReactNod
   const setField = useContext(FieldSetContext);
   const dataModel = useContext(DataModelContext);
   const [value, setValue] = useState(() => boundValue(component.value, dataModel));
+  useEffect(() => {
+    const next = boundValue(component.value, dataModel);
+    setValue(next);
+    setField(component.id, next);
+  }, [component.id, component.value, dataModel, setField]);
   return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input" type={str(component, "type") === "number" ? "number" : "text"} value={value} placeholder={str(component, "placeholder")} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }} /></label>;
 }
 
@@ -42,6 +47,11 @@ export function SelectView({ component }: { component: A2uiComponent }): ReactNo
   const setField = useContext(FieldSetContext);
   const dataModel = useContext(DataModelContext);
   const [value, setValue] = useState(() => boundValue(component.value, dataModel));
+  useEffect(() => {
+    const next = boundValue(component.value, dataModel);
+    setValue(next);
+    setField(component.id, next);
+  }, [component.id, component.value, dataModel, setField]);
   const options = Array.isArray(component.options) ? component.options.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item)) : [];
   return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<select className="a2ui-select" value={value} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }}><option value="">请选择</option>{options.map((option) => typeof option.value === "string" ? <option key={option.value} value={option.value}>{typeof option.label === "string" ? option.label : option.value}</option> : null)}</select></label>;
 }

@@ -1,9 +1,8 @@
 /**
  * a2ui-renderer chat-data —— Chat 业务节点数据模型与声明合并。
  *
- * MVP 语义（固定约定）：一个 createSurface 消息 = 一个完整可渲染的
- * Surface Snapshot；`surfaces` 按 surfaceId 整体替换（Map.set），
- * 不做组件级 patch（updateComponents 等消息收到即忽略）。
+ * 一个工具调用可携带完整 A2UI document。协议归约器先应用 create/update/
+ * delete 与 dataModel 生命周期，再把各 surface 的最终快照交给渲染节点。
  */
 
 import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
@@ -20,7 +19,7 @@ export interface A2uiSurfaceState {
 
 /** 'a2ui' Chat 节点的最终载荷。 */
 export interface A2uiChatData {
-  /** surfaceId → 快照（整值替换，MVP 无增量）。 */
+  /** surfaceId → 生命周期归约后的最终快照。 */
   readonly surfaces: ReadonlyMap<string, A2uiSurfaceState>;
 }
 

@@ -14,6 +14,7 @@ import { injectA2uiStyles } from "./a2ui-css.ts";
 import { createActionSender } from "./dispatch.ts";
 import { A2uiNodeView, type A2uiNodeInjected } from "./components/A2uiNodeView.tsx";
 import { registerA2uiConversationNode } from "./definition.ts";
+import { assertA2uiClientCapabilities } from "./runtime.ts";
 
 /** 依赖的 client 侧服务。 */
 export const inject = ["conversationEvents", "slots", "sessions", "theme"];
@@ -23,6 +24,7 @@ export const inject = ["conversationEvents", "slots", "sessions", "theme"];
  * 数据链路见 definition.ts（工具调用 → tool/result.meta，零自定义事件）。
  */
 export function apply(ctx: ClientContext): void {
+  assertA2uiClientCapabilities(ctx);
   injectA2uiStyles();
   registerA2uiConversationNode(ctx);
   ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({

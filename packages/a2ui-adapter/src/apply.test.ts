@@ -35,6 +35,8 @@ describe("a2ui-adapter", () => {
     expect(sections[0]?.order).toBe(A2UI_SECTION_ORDER);
     expect(sections[0]?.text).toContain(A2UI_TEACHING);
     expect(sections[0]?.text).toContain("Chart data contract");
+    expect(sections[0]?.text).toContain('EVERY message is a complete envelope');
+    expect(sections[0]?.text).toContain('value: { "path": "/filters/month" }');
     expect(tools.map((tool) => tool.name)).toContain(A2UI_TOOL_NAME);
   });
 
@@ -53,5 +55,44 @@ describe("a2ui-adapter", () => {
     expect(A2UI_TEACHING).toContain("a2ui_render");
     expect(A2UI_TEACHING).toContain("catalogId");
     expect(A2UI_TEACHING).toContain("ui_action");
+  });
+
+  it("persists a repaired multi-surface lifecycle document from the registered tool", async () => {
+    const sections: Array<{ name: string; order: number; text: string }> = [];
+    const tools: Array<{ name: string; execute?: (args: unknown, exec: unknown) => Promise<unknown> }> = [];
+    apply(mockCtx(sections, tools as Array<{ name: string }>), { teaching: false });
+    const tool = tools.find((candidate) => candidate.name === A2UI_TOOL_NAME);
+    expect(tool?.execute).toBeTypeOf("function");
+
+    const result = await tool?.execute?.({
+      messages: [
+        { version: "v0.9.1", createSurface: { surfaceId: "one", components: [{ id: "root", component: "stat", label: "Before" }] } },
+        { version: "v0.9.1", updateComponents: { surfaceId: "one", components: [{ id: "root", component: "stat", label: "After", ignored: true }] } },
+        { version: "v0.9.1", updateDataModel: { surfaceId: "one", path: "/filters/month", value: "08" } },
+        { version: "v0.9.1", createSurface: { surfaceId: "two", components: [{ id: "root", component: "stat", label: "Second" }] } },
+      ],
+    }, { agent: {}, callId: "call-1" });
+
+    const meta = (result as { meta: { document: string; componentNames: string[] } }).meta;
+    expect(meta.document.split("\n")).toHaveLength(4);
+    expect(meta.document).toContain('"label":"After"');
+    expect(meta.document).not.toContain("ignored");
+    expect(meta.componentNames).toEqual(["stat"]);
+  });
+
+  it("reports the exact lifecycle envelope whose version is missing", async () => {
+    const sections: Array<{ name: string; order: number; text: string }> = [];
+    const tools: Array<{ name: string; execute?: (args: unknown, exec: unknown) => Promise<unknown> }> = [];
+    apply(mockCtx(sections, tools as Array<{ name: string }>), { teaching: false });
+    const tool = tools.find((candidate) => candidate.name === A2UI_TOOL_NAME);
+
+    await expect(tool?.execute?.({
+      messages: [
+        { version: "v0.9.1", createSurface: { surfaceId: "one", components: [{ id: "root", component: "stat", label: "Before" }] } },
+        { updateDataModel: { surfaceId: "one", path: "/filters/month", value: "08" } },
+      ],
+    }, { agent: {}, callId: "call-invalid" })).rejects.toThrow(
+      'messages[1].version must be exactly "v0.9.1"',
+    );
   });
 });

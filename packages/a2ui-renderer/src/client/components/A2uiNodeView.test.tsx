@@ -143,6 +143,44 @@ describe("A2uiNodeView: 交互与 action 回传", () => {
     }]);
   });
 
+  it("refreshes bound form fields from updateDataModel snapshots", () => {
+    const actions: UiAction[] = [];
+    const send = vi.fn((action: UiAction) => actions.push(action));
+    const nodeFor = (snapshot: A2uiSurfaceSnapshot) => ({
+      key: "k-a2ui",
+      kind: "a2ui",
+      id: "id-a2ui",
+      target: "chat",
+      anchorSeq: 1,
+      location: { kind: "unresolved" },
+      visibility: "visible",
+      data: surfaceData(snapshot),
+    });
+    const initial: A2uiSurfaceSnapshot = {
+      surfaceId: "report-1",
+      catalogId: "dsh-basic",
+      dataModel: { filters: { month: "08" } },
+      components: [
+        { id: "root", component: "grid", columns: 1, children: ["form-1"] },
+        { id: "form-1", component: "form", submitAction: { name: "query" }, children: ["month"] },
+        { id: "month", component: "input", placeholder: "month", value: { path: "/filters/month" } },
+      ],
+    };
+    const view = (snapshot: A2uiSurfaceSnapshot) => <A2uiNodeView {...({ node: nodeFor(snapshot), sendAction: send, colorScheme: "light" } as unknown as A2uiNodeProps)} />;
+    const rendered = render(view(initial));
+    expect((screen.getByPlaceholderText("month") as HTMLInputElement).value).toBe("08");
+
+    rendered.rerender(view({ ...initial, dataModel: { filters: { month: "09" } } }));
+    expect((screen.getByPlaceholderText("month") as HTMLInputElement).value).toBe("09");
+    fireEvent.click(screen.getByText("query"));
+    expect(actions).toEqual([{
+      surfaceId: "report-1",
+      name: "query",
+      component: "form-1",
+      context: { values: { month: "09" } },
+    }]);
+  });
+
   it("disables a button without an action declaration", () => {
     renderNode(surfaceData({
       surfaceId: "report-1",

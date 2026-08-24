@@ -1,82 +1,80 @@
 # dsh-a2ui
 
-为 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）提供 **A2UI**（Agent-to-UI，[a2ui.org](https://a2ui.org/) v0.9.1）插件能力：模型以 assistant 文本输出 `[a2ui]...[/a2ui]` 短代码，dsh Web GUI（`dsh web`）聊天流中渲染为**可交互** UI，用户操作经既有 `SessionsApi.prompt` 回传 agent。**dsh 内核零改动**，全部通过插件机制接入。
+为 DeepSeek Harness（DSH）提供 A2UI v0.9.1 交互界面能力。模型通过 `a2ui_render` 工具输出结构化 document，DSH Web 在工具调用位置流式渲染 React UI；图表由 ECharts 绘制，用户操作通过 `<ui_action>` 回传 agent。整个接入不修改 DSH 内核。
+
+## 当前能力
+
+- 工具通道：原始 JSON 不进入 assistant 正文，UI 原位内嵌，并通过 `tool/result.meta` 持久化、回放。
+- 流式首屏：`tool-call-delta` 尚未闭合时即可解析已完成的 envelope，先显示可用界面；工具结果落定后切换到权威 document。
+- 完整生命周期：支持 `createSurface`、`updateComponents`、`updateDataModel`、`deleteSurface`，以及单次 document 中的多 surface。
+- 数据模型绑定：`input` / `select` 使用 `value: { "path": "/..." }` 读取 `updateDataModel`，快照更新后实时同步字段值。
+- ECharts：支持 `bars`、`line`、`donut`，响应容器尺寸变化并跟随 DSH 浅色/深色主题。
+- 交互组件：按钮 action、表单字段收集及 `<ui_action surface component name>payload</ui_action>` 回传。
+- 安全边界：协议 guard、catalog 字段白名单、组件数量上限、JSON Pointer 校验、生命周期引用校验和模型可见的精确错误诊断。
+- 运行时兼容保护：adapter 与 client 启动时检查关键 DSH API，版本不兼容时快速失败并给出明确错误。
 
 ## 架构
 
+```text
+模型调用 a2ui_render
+  -> adapter 校验/修复完整 A2UI document
+  -> tool/result.meta 持久化 JSONL document
+  -> renderer 从 tool-call-delta 生成流式预览
+  -> tool/result 到达后归约完整生命周期
+  -> React 组件树 + ECharts 渲染
+  -> button/form 产生 ui_action，交给 agent 下一轮处理
 ```
-A2UI v0.9.1 Protocol（wire format，严格对应官方）
-    ↓
-DSH Custom Catalog（catalogId: 'dsh-basic'，组件名 + 属性白名单 + 限额）
-    ↓
-DSH Renderer（React 渲染 + 交互回传）
-```
 
-- **协议与组件彻底分离**：协议层只承载官方 v0.9.1 消息模型（envelope + 6 类消息判别），自定义组件属于 catalog 层（官方协议 `catalogId` 的合法扩展点）。未来接官方 A2UI client / 其他 renderer / 升级 v1.x，协议层原样复用。
-- **主链路唯一**：`assistant/chunk`（live）+ `assistant/message`（history/replay）文本 → 提取短代码 → guard 修复 → surface 整值渲染。**无自定义会话事件、无工具通道、无组件级增量**（见下方 MVP 范围外清单）。
+## 包结构
 
-## 包结构（三包 monorepo）
-
-| 包 | 职责 | 运行时依赖 |
-|---|---|---|
-| `@dsh-a2ui/a2ui-protocol` | 协议类型（官方 v0.9.1）、catalog（dsh-basic）、guard（安全边界）、shortcode | 零依赖 |
-| `@dsh-a2ui/a2ui-adapter` | 宿主侧 Cordis 插件：注入 A2UI 教学段；bundle patch 装配 adapter + renderer 两行 | 零依赖 |
-| `@dsh-a2ui/a2ui-renderer` | dsh.client 双半部包：`ConversationNodeDefinition<'a2ui'>` + keyed renderer + 静态/交互组件 | react |
-
-> **adapter → renderer 依赖定位声明**：adapter 的 `cordis.patch.yml` 引用了 renderer 包名（让 `ClientModuleRegistry` 扫到 `dsh.client` 并下发 bundle），但 adapter **不 import renderer**——该引用仅用于 profile/bundle 装配，**不代表运行时业务依赖**。集成时两个包分别安装。
-
-### 组件（dsh-basic catalog）
-
-静态：`stat` / `table` / `chart`(bars|line|donut) / `card` / `grid` / `callout`；
-交互：`button`（点击回传 action）/ `form`（提交收集字段值）/ `input` / `select`。
-
-官方组件 → 自定义组件映射：
-
-| 官方 basic catalog | dsh-basic |
+| 包 | 职责 |
 |---|---|
-| Button | button |
-| TextField | input |
-| ChoicePicker | select |
-| Column / Row / List / Card | grid / card |
+| `@dsh-a2ui/a2ui-protocol` | A2UI v0.9.1 类型、`dsh-basic` catalog、guard、document 生命周期归约 |
+| `@dsh-a2ui/a2ui-adapter` | 注册 `a2ui_render`、注入模型教学、运行时兼容检查、profile bundle 装配 |
+| `@dsh-a2ui/a2ui-renderer` | DSH client 节点定义、流式/回放解析、React 组件、ECharts 与 action 回传 |
 
-## 集成步骤
+## dsh-basic 组件
 
-1. 构建三包（renderer 产出 `lib/client.js`）：
-   ```bash
-   pnpm install
-   pnpm --filter @dsh-a2ui/a2ui-adapter build
-   pnpm --filter @dsh-a2ui/a2ui-renderer build
-   ```
-2. 安装到 dsh web profile（两个包分别装，adapter 声明 `dsh.bundle.patch` 自动成为 profile layer）：
-   ```bash
-   dsh plugin --profile web add file:D:/git-depository/dsh-a2ui/packages/a2ui-adapter \
-     file:D:/git-depository/dsh-a2ui/packages/a2ui-renderer
-   ```
-3. 验证插件树出现两行：
-   ```bash
-   dsh --profile web --dump-config | grep dsh-a2ui
-   # - id: dsh-a2ui            name: '@dsh-a2ui/a2ui-adapter'
-   # - id: dsh-a2ui-renderer   name: '@dsh-a2ui/a2ui-renderer'
-   ```
-4. 重启 `dsh web`，浏览器加载 renderer bundle（`/plugins/@dsh-a2ui/a2ui-renderer/client.js` 返回 200 即链路通）。
+| 类型 | 组件 |
+|---|---|
+| 展示 | `stat`、`table`、`chart`、`card`、`grid`、`callout` |
+| 交互 | `button`、`form`、`input`、`select` |
 
-## 教学段（模型输出纪律）
+图表类型：`bars`、`line`、`donut`。
 
-adapter 经 `ctx.systemPrompt.section({ name: 'a2ui', order: 130 })` 注入教学段：模型在结构化表达优于纯文本时（统计→stat/table、趋势→chart、要点→card/grid/callout、需用户输入→交互组件）**调用 `a2ui_render` 工具**（参数 = A2UI v0.9.1 消息数组，createSurface 为首，`catalogId: "dsh-basic"`，根组件 id `root`）；工具将 document 写入 `tool/result.meta`，UI **原位内嵌**在工具调用处（无原始 JSON 文本泄露）。交互回传消息形如 `<ui_action surface=.. component=.. name=..>payload</ui_action>`，agent 收到后以新 surface **整值重绘**（surfaceId 保持一致）。
+## 开发与验证
 
-## MVP 范围外（未来需要时再加）
+```bash
+pnpm install
+pnpm check
+pnpm -r run build
+```
 
-- 自定义 session event（`a2ui/message`）
-- 自定义 RPC / Remote namespace
-- 组件级增量 patch（`updateComponents` / `updateDataModel` / `deleteSurface` 消息类型已定义，Renderer 当前忽略）
-- 独立 state store（dataModel 生命周期，见 `docs/STATUS.md` P1-1）
-- 独立 action protocol / A2UI middleware / server-side renderer
+`pnpm check` 会依次执行 lint、三包 TypeScript 检查与 Vitest。P2 完成时共有 13 个测试文件、62 个测试，包含协议、adapter、流式解析、生命周期、数据模型、ECharts 主题和完整 UI/action 链路。
 
-## 验证状态
+## 安装到 DSH profile
 
-- ✅ 三包 typecheck / vitest（37 tests）/ oxlint 全绿
-- ✅ dsh web 集成链路：`ClientModuleRegistry` 扫描到 renderer、bundle 正常下发
-- ✅ 真实 E2E 部分通过：UI 渲染（含主题样式）、form 提交 → `<ui_action>` 回传 → 模型响应、工具 reject 错误可见
-- 🔴 已知问题：模型重画时 chart 数据可能丢失（"无数据"，见 `docs/STATUS.md` P1-1）
+```bash
+dsh plugin --profile web add file:D:/git-depository/dsh-a2ui/packages/a2ui-adapter \
+  file:D:/git-depository/dsh-a2ui/packages/a2ui-renderer
+dsh --profile web
+```
 
-> **给后续开发者**：完整的已实现功能、已知问题、环境坑与排查指南见 **[docs/STATUS.md](docs/STATUS.md)**。
+安装后应能访问 `/plugins/@dsh-a2ui/a2ui-renderer/client.js`，并在插件配置中看到 adapter 与 renderer。
+
+## Authoring 关键约束
+
+- `messages[0]` 必须是包含 `id: "root"` 的 `createSurface`。
+- 每一条 lifecycle envelope 都必须重复声明 `version: "v0.9.1"`。
+- 数据绑定使用 `value: { "path": "/filters/month" }`，不存在 `valuePath` 字段。
+- 新工具调用是一个新的完整 document。若重绘后仍需保留绑定值，必须在该次调用中重新发送对应的 `updateDataModel`。
+- adapter 会在模型遗漏已有图表的 `labels` / `series` 时从同会话 durable 状态回填，但这只是防丢保护，不代替模型发送完整业务状态。
+
+## 当前边界与后续方向
+
+- 当前 catalog 是有意收敛的十组件集合；复杂布局、弹窗、分页、日期选择、文件上传等尚未提供。
+- 新工具调用之间不自动合并任意 dataModel；只有单次 document 内的生命周期是权威且完整的。
+- ECharts 当前打入 client bundle，功能稳定但 bundle 约 1.74 MB，后续可做按需模块化与延迟加载。
+- DSH 仍处于快速演进阶段，升级宿主后应运行兼容检查、回放 fixtures 与真实浏览器 smoke test。
+
+完整验收记录、能力矩阵和开发建议见 [docs/STATUS.md](docs/STATUS.md)。

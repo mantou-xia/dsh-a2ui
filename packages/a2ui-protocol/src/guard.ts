@@ -15,7 +15,15 @@
 import { getCatalogComponent, isCatalogComponent, resolveCatalog } from "./catalog/dsh-basic.js";
 import type { A2uiCatalog, CatalogProperty } from "./catalog/types.js";
 import type { A2uiComponent } from "./protocol/messages.js";
-import type { A2uiEnvelope, A2uiCreateSurface } from "./protocol/messages.js";
+import type {
+  A2uiCreateSurface,
+  A2uiDeleteSurface,
+  A2uiEnvelope,
+  A2uiUpdateComponents,
+  A2uiUpdateDataModel,
+} from "./protocol/messages.js";
+import { isA2uiEnvelope } from "./protocol/messages.js";
+import { reduceA2uiDocument } from "./protocol/surface.js";
 import { A2UI_VERSION, A2UI_LIMITS } from "./protocol/types.js";
 import type { A2uiComponentPropertyValue } from "./protocol/types.js";
 
@@ -301,4 +309,108 @@ export function repairA2uiEnvelope(input: unknown): A2uiEnvelope | null {
     return null;
   }
   return { version: A2UI_VERSION, createSurface };
+}
+
+function repairUpdateComponents(
+  value: Record<string, unknown>,
+  catalog: A2uiCatalog,
+): A2uiUpdateComponents | null {
+  const surfaceId = truncateString(value.surfaceId, A2UI_LIMITS.maxIdLength);
+  if (surfaceId === undefined || surfaceId.length === 0 || !Array.isArray(value.components)) {
+    return null;
+  }
+  const components = value.components
+    .slice(0, A2UI_LIMITS.maxComponents)
+    .map((component) => repairComponent(component, catalog))
+    .filter((component): component is A2uiComponent => component !== undefined);
+  if (components.length === 0) {
+    return null;
+  }
+  return { surfaceId, components };
+}
+
+function repairUpdateDataModel(value: Record<string, unknown>): A2uiUpdateDataModel | null {
+  const surfaceId = truncateString(value.surfaceId, A2UI_LIMITS.maxIdLength);
+  if (surfaceId === undefined || surfaceId.length === 0) {
+    return null;
+  }
+  const rawPath = value.path;
+  const path = rawPath === undefined ? undefined : truncateString(rawPath, A2UI_LIMITS.maxString);
+  if (rawPath !== undefined && (path === undefined || (path.length > 0 && !path.startsWith("/")))) {
+    return null;
+  }
+  return {
+    surfaceId,
+    ...(path !== undefined ? { path } : {}),
+    ...(Object.hasOwn(value, "value") ? { value: value.value } : {}),
+  };
+}
+
+function repairDeleteSurface(value: Record<string, unknown>): A2uiDeleteSurface | null {
+  const surfaceId = truncateString(value.surfaceId, A2UI_LIMITS.maxIdLength);
+  return surfaceId === undefined || surfaceId.length === 0 ? null : { surfaceId };
+}
+
+/**
+ * Repairs a complete, renderable A2UI document. The first message must create a
+ * surface; later messages may create additional surfaces or update/delete an
+ * existing one. Action/error envelopes are intentionally not accepted here:
+ * `a2ui_render` persists a UI document, not client-to-agent traffic.
+ */
+export function repairA2uiDocument(input: readonly unknown[]): A2uiEnvelope[] | null {
+  if (input.length === 0) {
+    return null;
+  }
+  const repaired: A2uiEnvelope[] = [];
+  const catalogs = new Map<string, A2uiCatalog>();
+
+  for (const [index, value] of input.entries()) {
+    if (!isA2uiEnvelope(value)) {
+      return null;
+    }
+    if ("createSurface" in value) {
+      const envelope = repairA2uiEnvelope(value);
+      if (envelope === null || !("createSurface" in envelope)) {
+        return null;
+      }
+      if (index === 0 || repaired.length > 0) {
+        repaired.push(envelope);
+        const catalog = resolveCatalog(envelope.createSurface.catalogId);
+        if (catalog === undefined) return null;
+        catalogs.set(envelope.createSurface.surfaceId, catalog);
+        continue;
+      }
+    }
+    if (index === 0) {
+      return null;
+    }
+    const current = reduceA2uiDocument(repaired);
+    if ("updateComponents" in value) {
+      const snapshot = current.get(value.updateComponents.surfaceId);
+      const catalog = snapshot === undefined ? undefined : catalogs.get(snapshot.surfaceId);
+      if (catalog === undefined || !isPlainRecord(value.updateComponents)) return null;
+      const updateComponents = repairUpdateComponents(value.updateComponents, catalog);
+      if (updateComponents === null || !current.has(updateComponents.surfaceId)) return null;
+      repaired.push({ version: A2UI_VERSION, updateComponents });
+      continue;
+    }
+    if ("updateDataModel" in value) {
+      if (!isPlainRecord(value.updateDataModel)) return null;
+      const updateDataModel = repairUpdateDataModel(value.updateDataModel);
+      if (updateDataModel === null || !current.has(updateDataModel.surfaceId)) return null;
+      repaired.push({ version: A2UI_VERSION, updateDataModel });
+      continue;
+    }
+    if ("deleteSurface" in value) {
+      if (!isPlainRecord(value.deleteSurface)) return null;
+      const deleteSurface = repairDeleteSurface(value.deleteSurface);
+      if (deleteSurface === null || !current.has(deleteSurface.surfaceId)) return null;
+      repaired.push({ version: A2UI_VERSION, deleteSurface });
+      catalogs.delete(deleteSurface.surfaceId);
+      continue;
+    }
+    return null;
+  }
+  const first = repaired[0];
+  return first !== undefined && "createSurface" in first ? repaired : null;
 }

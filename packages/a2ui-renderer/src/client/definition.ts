@@ -23,6 +23,7 @@ import type {
 } from "@deepseek-ai/dsh-client-runtime/client";
 import {
   isA2uiEnvelope,
+  repairA2uiDocument,
   reduceA2uiDocument,
 } from "@dsh-a2ui/a2ui-protocol";
 import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
@@ -83,16 +84,75 @@ export function snapshotsFromDocument(document: string): ReadonlyMap<string, A2u
   return reduceA2uiDocument(messages);
 }
 
-function previewFromArguments(argsRaw: string, seq: number): ReadonlyMap<string, A2uiSurfaceState> | null {
+/** Returns each complete object already present in a streaming `messages` array. */
+function completeMessageObjects(argsRaw: string): unknown[] {
+  const key = argsRaw.search(/"messages"\s*:\s*\[/);
+  if (key === -1) return [];
+  const arrayStart = argsRaw.indexOf("[", key);
+  if (arrayStart === -1) return [];
+  const messages: unknown[] = [];
+  let cursor = arrayStart + 1;
+  while (cursor < argsRaw.length) {
+    while (cursor < argsRaw.length && /[\s,]/.test(argsRaw[cursor] ?? "")) cursor++;
+    if (argsRaw[cursor] !== "{") break;
+    let depth = 0;
+    let quoted = false;
+    let escaped = false;
+    let end = -1;
+    for (let index = cursor; index < argsRaw.length; index++) {
+      const char = argsRaw[index] ?? "";
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === '"') quoted = false;
+        continue;
+      }
+      if (char === '"') {
+        quoted = true;
+      } else if (char === "{") {
+        depth++;
+      } else if (char === "}") {
+        depth--;
+        if (depth === 0) {
+          end = index + 1;
+          break;
+        }
+      }
+    }
+    if (end === -1) break;
+    try {
+      messages.push(JSON.parse(argsRaw.slice(cursor, end)));
+    } catch {
+      break;
+    }
+    cursor = end;
+  }
+  return messages;
+}
+
+/**
+ * Decodes a complete document when possible, otherwise previews only the
+ * complete envelopes already emitted in a tool-call delta. Both paths pass
+ * through the protocol guard before the renderer receives a snapshot.
+ */
+export function snapshotsFromArguments(argsRaw: string): ReadonlyMap<string, A2uiSurfaceSnapshot> {
+  let messages: unknown[] = completeMessageObjects(argsRaw);
   try {
     const parsed: unknown = JSON.parse(argsRaw);
-    if (typeof parsed !== "object" || parsed === null || !Array.isArray((parsed as Record<string, unknown>).messages)) return null;
-    const snapshots = reduceA2uiDocument((parsed as { messages: unknown[] }).messages.filter(isA2uiEnvelope));
-    if (snapshots.size === 0) return null;
-    return new Map([...snapshots.values()].map((snapshot) => [snapshot.surfaceId, { surfaceId: snapshot.surfaceId, snapshot, seq }]));
+    if (typeof parsed === "object" && parsed !== null && Array.isArray((parsed as Record<string, unknown>).messages)) {
+      messages = (parsed as { messages: unknown[] }).messages;
+    }
   } catch {
-    return null;
+    // A streaming arguments payload is normally incomplete; use the objects recovered above.
   }
+  const repaired = repairA2uiDocument(messages);
+  return repaired === null ? new Map() : reduceA2uiDocument(repaired);
+}
+
+function previewFromArguments(argsRaw: string, seq: number): ReadonlyMap<string, A2uiSurfaceState> | null {
+  const snapshots = snapshotsFromArguments(argsRaw);
+  if (snapshots.size === 0) return null;
+  return new Map([...snapshots.values()].map((snapshot) => [snapshot.surfaceId, { surfaceId: snapshot.surfaceId, snapshot, seq }]));
 }
 
 function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDefinitionState {
@@ -101,6 +161,7 @@ function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDe
     const chunk = event.data.chunk;
     if (chunk.type !== "tool-call-delta") return state;
     let { renderIndex, surfaceId, anchorSeq, location } = state;
+    const startsNewRender = chunk.name === A2UI_TOOL_NAME && chunk.index !== renderIndex;
     if (chunk.name === A2UI_TOOL_NAME) {
       renderIndex = chunk.index;
       surfaceId = String(chunk.id);
@@ -111,8 +172,18 @@ function foldMatch(state: A2uiDefinitionState, match: ConversationMatch): A2uiDe
       }
     }
     if (renderIndex !== null && chunk.index === renderIndex) {
-      const argsRaw = state.argsRaw + chunk.argumentsDelta;
-      return { ...state, renderIndex, surfaceId, anchorSeq, location, argsRaw, preview: previewFromArguments(argsRaw, event.seq) };
+      const argsRaw = startsNewRender ? chunk.argumentsDelta : state.argsRaw + chunk.argumentsDelta;
+      const parsedPreview = previewFromArguments(argsRaw, event.seq);
+      return {
+        ...state,
+        renderIndex,
+        surfaceId,
+        anchorSeq,
+        location,
+        argsRaw,
+        settled: startsNewRender ? null : state.settled,
+        preview: parsedPreview ?? (startsNewRender ? null : state.preview),
+      };
     }
     return { ...state, renderIndex, surfaceId, anchorSeq, location };
   }
@@ -137,10 +208,11 @@ function publication(match: ConversationMatch): ConversationPublication {
   return match.event.type === "assistant/chunk" ? "animation-frame" : "immediate";
 }
 
-function buildViewNode(context: ConversationNodeContext<A2uiDefinitionState>): ChatConversationViewNode | null {
+export function buildA2uiViewNode(context: ConversationNodeContext<A2uiDefinitionState>): ChatConversationViewNode | null {
   const surfaces = context.state?.settled ?? context.state?.preview ?? null;
-  if (surfaces === null || surfaces.size === 0) return null;
-  const data: A2uiChatData = { surfaces };
+  const hasSurfaces = surfaces !== null && surfaces.size > 0;
+  if (!hasSurfaces && context.state?.anchorSeq === null) return null;
+  const data: A2uiChatData = { surfaces: surfaces ?? new Map() };
   return {
     key: context.key,
     kind: "a2ui",
@@ -148,7 +220,7 @@ function buildViewNode(context: ConversationNodeContext<A2uiDefinitionState>): C
     target: "chat",
     anchorSeq: context.state?.anchorSeq ?? context.start?.event.seq ?? 0,
     location: context.state?.location ?? context.start?.location ?? { kind: "unresolved" },
-    visibility: "visible",
+    visibility: hasSurfaces ? "visible" : "hidden",
     data,
   };
 }
@@ -172,7 +244,7 @@ export const a2uiDefinition: ConversationNodeDefinition<A2uiDefinitionState> = {
   },
   update: (context, match) => foldMatch(context.state, match),
   publication,
-  buildViewNode,
+  buildViewNode: buildA2uiViewNode,
 };
 
 /** 注册 'a2ui' Definition。 */

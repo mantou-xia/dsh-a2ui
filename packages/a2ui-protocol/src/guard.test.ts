@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { A2UI_LIMITS, DSH_BASIC_CATALOG_ID, repairA2uiEnvelope } from "./index.js";
+import {
+  A2UI_LIMITS,
+  DSH_BASIC_CATALOG_ID,
+  reduceA2uiDocument,
+  repairA2uiDocument,
+  repairA2uiEnvelope,
+} from "./index.js";
 
 /** 测试用的宽松 createSurface 视图（repair 返回类型收窄）。 */
 type TestCreateSurface = {
@@ -194,5 +200,37 @@ describe("a2ui-protocol: guard", () => {
     const first = repairA2uiEnvelope(input);
     const second = repairA2uiEnvelope(first);
     expect(second).toEqual(first);
+  });
+
+  it("repairs a full surface document and retains safe lifecycle updates", () => {
+    const repaired = repairA2uiDocument([
+      createSurface({
+        components: [{ id: "root", component: "grid", columns: 1, children: ["stat-1"] }, { id: "stat-1", component: "stat", label: "old" }],
+      }),
+      { version: "v0.9.1", updateComponents: { surfaceId: "s-1", components: [{ id: "stat-1", component: "stat", label: "new", unknown: "drop" }] } },
+      { version: "v0.9.1", updateDataModel: { surfaceId: "s-1", path: "/filters/month", value: "08" } },
+      { version: "v0.9.1", createSurface: { surfaceId: "s-2", components: [{ id: "root", component: "stat", label: "second" }] } },
+      { version: "v0.9.1", deleteSurface: { surfaceId: "s-2" } },
+    ]);
+    expect(repaired).not.toBeNull();
+    const surfaces = reduceA2uiDocument(repaired ?? []);
+    expect([...surfaces.keys()]).toEqual(["s-1"]);
+    expect(surfaces.get("s-1")?.components.find((component) => component.id === "stat-1")?.["label"]).toBe("new");
+    expect(surfaces.get("s-1")?.dataModel).toEqual({ filters: { month: "08" } });
+  });
+
+  it("rejects lifecycle messages without a live surface or with an invalid JSON Pointer", () => {
+    expect(repairA2uiDocument([
+      createSurface(),
+      { version: "v0.9.1", updateComponents: { surfaceId: "missing", components: [{ id: "root", component: "stat" }] } },
+    ])).toBeNull();
+    expect(repairA2uiDocument([
+      createSurface(),
+      { version: "v0.9.1", updateDataModel: { surfaceId: "s-1", path: "filters/month", value: "08" } },
+    ])).toBeNull();
+    expect(repairA2uiDocument([
+      createSurface(),
+      { version: "v0.9.1", action: { name: "refresh", surfaceId: "s-1" } },
+    ])).toBeNull();
   });
 });

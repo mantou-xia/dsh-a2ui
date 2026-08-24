@@ -7,7 +7,9 @@
  */
 
 import type { Context } from "@deepseek-ai/cordis";
+import { A2UI_LIFECYCLE_TEACHING } from "./lifecycle-teaching.js";
 import { A2UI_TEACHING } from "./teaching.js";
+import { assertA2uiHostCapabilities } from "./runtime.js";
 import { applyA2uiTool } from "./tool.js";
 
 /** A2UI 教学段名与顺序（顺序约定：100–199 为工具/协议指引）。 */
@@ -27,11 +29,12 @@ The catalog also accepts \`[{"name":"Sales","values":[120,150]}]\` or \`[{"label
 `;
 
 export function apply(ctx: Context, config: { teaching?: boolean } | undefined): void {
+  assertA2uiHostCapabilities(ctx);
   if (config?.teaching !== false) {
     ctx.systemPrompt.section({
       name: A2UI_SECTION_NAME,
       order: A2UI_SECTION_ORDER,
-      text: `${A2UI_CHART_TEACHING}\n${A2UI_TEACHING}`,
+      text: `${A2UI_CHART_TEACHING}\n${A2UI_TEACHING}\n${A2UI_LIFECYCLE_TEACHING}`,
     });
   }
   applyA2uiTool(ctx);

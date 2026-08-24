@@ -16,7 +16,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import type { GenericCallView, GenericResultView, ToolResult } from "@deepseek-ai/dsh-tools";
 import type { JsonValue } from "@deepseek-ai/dsh-session";
-import { isA2uiEnvelope, reduceA2uiDocument, repairA2uiEnvelope } from "@dsh-a2ui/a2ui-protocol";
+import { reduceA2uiDocument, repairA2uiDocument } from "@dsh-a2ui/a2ui-protocol";
 import { A2uiSurfaceStateStore } from "./surface-state.js";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;
@@ -83,6 +83,32 @@ function validateCreateSurfaceMessage(value: unknown): never | void {
   }
 }
 
+const DOCUMENT_OPERATIONS = ["createSurface", "updateComponents", "updateDataModel", "deleteSurface"] as const;
+
+/** Validate every envelope before repair so the model receives an actionable index-specific error. */
+function validateDocumentMessages(messages: readonly unknown[]): void {
+  messages.forEach((value, index) => {
+    if (!isPlainRecord(value)) {
+      throw new Error(`a2ui_render: messages[${index}] must be a JSON object (an A2UI envelope)`);
+    }
+    if (value.version !== "v0.9.1") {
+      throw new Error(
+        `a2ui_render: messages[${index}].version must be exactly "v0.9.1"; every lifecycle envelope repeats the version (got ${JSON.stringify(value.version)})`,
+      );
+    }
+    const operations = DOCUMENT_OPERATIONS.filter((operation) => operation in value);
+    if (operations.length !== 1) {
+      throw new Error(
+        `a2ui_render: messages[${index}] must contain exactly one lifecycle operation: ${DOCUMENT_OPERATIONS.join(", ")}`,
+      );
+    }
+    const operation = operations[0];
+    if (operation === undefined || !isPlainRecord(value[operation])) {
+      throw new Error(`a2ui_render: messages[${index}].${String(operation)} must be a JSON object`);
+    }
+  });
+}
+
 /**
  * 注册 `a2ui_render`。
  * @param ctx - 携带工具注册表的上下文。
@@ -132,19 +158,20 @@ export function applyA2uiTool(ctx: Context): void {
       if (!Array.isArray(messages) || messages.length === 0) {
         throw new Error("a2ui_render: messages must be a non-empty array");
       }
-      // MVP：只接受第一个 createSurface 消息（surface 整值 checkpoint）。
+      // 完整 document 仍要求首条为 createSurface，后续可包含所有生命周期消息。
       const envelope = messages[0];
       // 详细诊断（model-visible 错误）后让 guard 修一次（防御）。
       validateCreateSurfaceMessage(envelope);
-      const repaired = repairA2uiEnvelope(envelope);
-      if (repaired === null || !("createSurface" in repaired)) {
-        throw new Error("a2ui_render: messages[0] passed structural checks but the guard still rejected it (catalogId/component limits? check the surfaceId is unique and components do not exceed 200)");
+      validateDocumentMessages(messages);
+      const repairedDocument = repairA2uiDocument(messages);
+      const repairedFirst = repairedDocument?.[0];
+      if (repairedFirst === undefined || !("createSurface" in repairedFirst)) {
+        throw new Error("a2ui_render: the document passed envelope checks but the guard rejected its lifecycle sequence or payload (check surfaceId targets, JSON Pointer paths, catalogId, and the 200-component limit)");
       }
       // 重绘是完整快照；模型若遗漏已有 chart.series，按同会话、同业务 surface
       // 回填最后一次 durable 快照中的数据。显式 series: {} 仍表示清空。
-      const merged = surfaceState.merge(exec.agent, repaired);
-      const updates = messages.slice(1).filter(isA2uiEnvelope);
-      const normalized = [merged, ...updates];
+      const merged = surfaceState.merge(exec.agent, repairedFirst);
+      const normalized = [merged, ...(repairedDocument?.slice(1) ?? [])];
       const document = serializeDocument(normalized);
       const componentNames = [...reduceA2uiDocument(normalized).values()]
         .flatMap((surface) => surface.components.map((component) => component.component));
