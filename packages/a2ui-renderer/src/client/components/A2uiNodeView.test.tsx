@@ -6,11 +6,12 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
 import type { A2uiChatData } from "../chat-data.ts";
 import { A2uiNodeView, type A2uiNodeProps } from "./A2uiNodeView.tsx";
 import type { UiAction } from "../dispatch.ts";
+import { A2uiComponentRegistry } from "../registry.ts";
 
 const echarts = vi.hoisted(() => {
   const chart = { dispose: vi.fn(), resize: vi.fn(), setOption: vi.fn() };
@@ -24,7 +25,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderNode(data: A2uiChatData, sendAction: (action: UiAction) => void = () => {}): ReturnType<typeof vi.fn> {
+function renderNode(
+  data: A2uiChatData,
+  sendAction: (action: UiAction) => void = () => {},
+  a2uiRenderer?: A2uiComponentRegistry,
+): ReturnType<typeof vi.fn> {
   const send = vi.fn(sendAction);
   const node = {
     key: "k-a2ui",
@@ -36,7 +41,7 @@ function renderNode(data: A2uiChatData, sendAction: (action: UiAction) => void =
     visibility: "visible",
     data,
   };
-  render(<A2uiNodeView {...({ node, sendAction: send, colorScheme: "light" } as unknown as A2uiNodeProps)} />);
+  render(<A2uiNodeView {...({ node, sendAction: send, colorScheme: "light", a2uiRenderer } as unknown as A2uiNodeProps)} />);
   return send;
 }
 
@@ -45,6 +50,19 @@ function surfaceData(snapshot: A2uiSurfaceSnapshot): A2uiChatData {
 }
 
 describe("A2uiNodeView: 静态组件渲染", () => {
+  it("renders a hot-registered catalog component and removes it after disposal", () => {
+    const registry = new A2uiComponentRegistry();
+    const dispose = registry.register("dsh-example", "notice", ({ component }) => <div>{typeof component.body === "string" ? component.body : ""}</div>);
+    renderNode(surfaceData({
+      surfaceId: "report-1",
+      catalogId: "dsh-example",
+      components: [{ id: "root", component: "notice", body: "A library renderer is active." }],
+    }), () => {}, registry);
+    expect(screen.getByText("A library renderer is active.")).not.toBeNull();
+    act(dispose);
+    expect(screen.queryByText("A library renderer is active.")).toBeNull();
+  });
+
   it("renders stat with value and label", () => {
     renderNode(surfaceData({
       surfaceId: "report-1",
@@ -87,7 +105,7 @@ describe("A2uiNodeView: 静态组件渲染", () => {
       ],
     }));
     expect(screen.getByText("趋势")).not.toBeNull();
-    expect(screen.getByRole("img", { name: "bars chart" })).not.toBeNull();
+    expect(screen.getByRole("img", { name: /趋势。横轴为一、二。数据为销售额：10、20。/ })).not.toBeNull();
     expect(echarts.init).toHaveBeenCalledTimes(1);
     expect(screen.getByText("注意")).not.toBeNull();
   });

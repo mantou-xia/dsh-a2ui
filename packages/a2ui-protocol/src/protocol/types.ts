@@ -25,6 +25,7 @@ export type A2uiComponentPropertyValue =
   | number[]
   | string[][]
   | Record<string, unknown>
+  | Record<string, unknown>[]
   | A2uiBoundValue;
 
 /** 数据模型（与组件结构分离；MVP 不实现 dataModel 生命周期）。 */

@@ -8,6 +8,7 @@
 
 import type { Context } from "@deepseek-ai/cordis";
 import { A2UI_LIFECYCLE_TEACHING } from "./lifecycle-teaching.js";
+import { provideA2uiCatalogs } from "./catalog-registry.js";
 import { A2UI_TEACHING } from "./teaching.js";
 import { assertA2uiHostCapabilities } from "./runtime.js";
 import { applyA2uiTool } from "./tool.js";
@@ -30,6 +31,7 @@ The catalog also accepts \`[{"name":"Sales","values":[120,150]}]\` or \`[{"label
 
 export function apply(ctx: Context, config: { teaching?: boolean } | undefined): void {
   assertA2uiHostCapabilities(ctx);
+  const catalogs = provideA2uiCatalogs(ctx);
   if (config?.teaching !== false) {
     ctx.systemPrompt.section({
       name: A2UI_SECTION_NAME,
@@ -37,5 +39,5 @@ export function apply(ctx: Context, config: { teaching?: boolean } | undefined):
       text: `${A2UI_CHART_TEACHING}\n${A2UI_TEACHING}\n${A2UI_LIFECYCLE_TEACHING}`,
     });
   }
-  applyA2uiTool(ctx);
+  applyA2uiTool(ctx, catalogs);
 }

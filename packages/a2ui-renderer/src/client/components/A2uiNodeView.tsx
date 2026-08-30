@@ -5,34 +5,29 @@
  * input/select）经注入的 sendAction 以 `<ui_action>` 回传 agent。
  */
 
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 import type { A2uiComponent, A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
 import { createActionSender, type UiAction } from "../dispatch.ts";
+import { A2uiComponentRegistry } from "../registry.ts";
 import {
-  CalloutView,
-  CardView,
-  ChartView,
-  GridView,
-  StatView,
-  TableView,
-} from "./static.tsx";
-import {
-  ButtonView,
   DataModelContext,
   FieldSetContext,
   FieldValuesContext,
-  FormView,
-  InputView,
-  SelectView,
 } from "./interactive.tsx";
+import { registerDshBasicComponents } from "./dsh-basic.tsx";
+
+const fallbackRegistry = new A2uiComponentRegistry();
+registerDshBasicComponents(fallbackRegistry);
 
 /** 插件注入的渲染器依赖。 */
 export interface A2uiNodeInjected {
   readonly sendAction: (action: UiAction) => void;
   /** 当前宿主配色（主题切换时刷新；CSS 变量已跟随，此处供需要 JS 的逻辑）。 */
   readonly colorScheme: "light" | "dark";
+  /** Runtime registry that component-library client plugins contribute to. */
+  readonly a2uiRenderer?: A2uiComponentRegistry;
 }
 
 /** 完整 keyed renderer props。 */
@@ -44,11 +39,15 @@ function ComponentNode({
   components,
   emit,
   colorScheme,
+  catalogId,
+  registry,
 }: {
   component: A2uiComponent;
   components: Map<string, A2uiComponent>;
   emit: (componentId: string, action: { name: string; payload?: unknown }) => void;
   colorScheme: "light" | "dark";
+  catalogId: string;
+  registry: A2uiComponentRegistry;
 }): ReactNode {
   const children = useMemo(
     () =>
@@ -58,40 +57,12 @@ function ComponentNode({
     [component.children, components],
   );
   const childNodes = children.map((child) => (
-    <ComponentNode key={child.id} component={child} components={components} emit={emit} colorScheme={colorScheme} />
+    <ComponentNode key={child.id} component={child} components={components} emit={emit} colorScheme={colorScheme} catalogId={catalogId} registry={registry} />
   ));
-  switch (component.component) {
-    case "stat":
-      return <StatView component={component} />;
-    case "table":
-      return <TableView component={component} />;
-    case "chart":
-      return <ChartView component={component} colorScheme={colorScheme} />;
-    case "card":
-      return <CardView component={component}>{childNodes}</CardView>;
-    case "grid":
-      return <GridView component={component}>{childNodes}</GridView>;
-    case "callout":
-      return <CalloutView component={component} />;
-    case "button":
-      return <ButtonView component={component} onAction={(action) => emit(component.id, action)} />;
-    case "form":
-      return (
-        <FormView
-          component={component}
-          fieldIds={children.filter((child) => child.component === "input" || child.component === "select").map((child) => child.id)}
-          onAction={(action) => emit(component.id, action)}
-        >
-          {childNodes}
-        </FormView>
-      );
-    case "input":
-      return <InputView component={component} />;
-    case "select":
-      return <SelectView component={component} />;
-    default:
-      return null;
-  }
+  const Renderer = registry.resolve(catalogId, component.component);
+  return Renderer === undefined
+    ? null
+    : <Renderer component={component} childComponents={children} emit={(action) => emit(component.id, action)} colorScheme={colorScheme}>{childNodes}</Renderer>;
 }
 
 /** 一个 surface 的快照渲染（补 surfaceId + componentId 后回传）。 */
@@ -99,10 +70,12 @@ function SurfaceView({
   snapshot,
   sendAction,
   colorScheme,
+  registry,
 }: {
   snapshot: A2uiSurfaceSnapshot;
   sendAction: (action: UiAction) => void;
   colorScheme: "light" | "dark";
+  registry: A2uiComponentRegistry;
 }): ReactNode {
   const components = useMemo(
     () => new Map(snapshot.components.map((item) => [item.id, item])),
@@ -123,7 +96,7 @@ function SurfaceView({
   return (
     <div className="a2ui-surface" data-a2ui-surface={snapshot.surfaceId}>
       <DataModelContext.Provider value={snapshot.dataModel ?? {}}>
-        <ComponentNode component={root} components={components} emit={emit} colorScheme={colorScheme} />
+        <ComponentNode component={root} components={components} emit={emit} colorScheme={colorScheme} catalogId={snapshot.catalogId} registry={registry} />
       </DataModelContext.Provider>
     </div>
   );
@@ -134,11 +107,14 @@ export const A2uiNodeView = memo(function A2uiNodeView({
   node,
   sendAction,
   colorScheme,
+  a2uiRenderer,
 }: A2uiNodeProps) {
+  const registry = a2uiRenderer ?? fallbackRegistry;
+  useSyncExternalStore(registry.subscribe.bind(registry), registry.getVersion.bind(registry), registry.getVersion.bind(registry));
   const surfaces = [...node.data.surfaces.values()];
-  const fieldValues = useRef(new Map<string, string>());
-  const getField = useCallback((id: string) => fieldValues.current.get(id) ?? "", []);
-  const setField = useCallback((id: string, value: string) => {
+  const fieldValues = useRef(new Map<string, import("./interactive.tsx").FieldValue>());
+  const getField = useCallback((id: string) => fieldValues.current.get(id), []);
+  const setField = useCallback((id: string, value: import("./interactive.tsx").FieldValue) => {
     fieldValues.current.set(id, value);
   }, []);
   if (surfaces.length === 0) {
@@ -154,6 +130,7 @@ export const A2uiNodeView = memo(function A2uiNodeView({
               snapshot={surface.snapshot}
               sendAction={sendAction}
               colorScheme={colorScheme}
+              registry={registry}
             />
           ))}
         </div>

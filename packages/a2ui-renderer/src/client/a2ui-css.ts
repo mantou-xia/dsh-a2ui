@@ -105,6 +105,29 @@ export const A2UI_CSS = `
   font-size: 13px;
   min-width: 160px;
 }
+.a2ui-switch,
+.a2ui-slider > span,
+.a2ui-pagination,
+.a2ui-tab-list,
+.a2ui-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.a2ui-switch { color: var(--dsw-alias-label-primary, #111); font-size: 13px; }
+.a2ui-slider input { vertical-align: middle; }
+.a2ui-slider output { min-width: 24px; display: inline-block; text-align: right; }
+.a2ui-pagination { justify-content: flex-end; margin-top: 8px; font-size: 12px; color: var(--dsw-alias-label-tertiary, #666); }
+.a2ui-tabs { border: 1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25)); border-radius: 8px; overflow: hidden; }
+.a2ui-tab-list { padding: 4px 6px; border-bottom: 1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25)); }
+.a2ui-tab { padding: 5px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-tertiary, #666); cursor: pointer; }
+.a2ui-tab-active { background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.08)); color: var(--dsw-alias-label-primary, #111); font-weight: 600; }
+.a2ui-tab-panel { padding: 10px 14px; }
+.a2ui-modal-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(0, 0, 0, 0.45); }
+.a2ui-modal { width: min(100%, 560px); max-height: calc(100vh - 40px); overflow: auto; padding: 14px; border-radius: 10px; background: var(--dsw-alias-bg-base, #fff); color: var(--dsw-alias-label-primary, #111); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28); }
+.a2ui-modal-header { justify-content: space-between; margin-bottom: 10px; }
+.a2ui-modal-close { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; line-height: 1; }
+.a2ui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 `;
 
 let injected = false;

@@ -3,6 +3,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import { apply, A2UI_SECTION_NAME, A2UI_SECTION_ORDER } from "./apply.js";
 import { A2UI_TEACHING } from "./teaching.js";
 import { A2UI_TOOL_NAME } from "./tool.js";
+import type { A2uiCatalogRegistry } from "@dsh-a2ui/a2ui-protocol";
 
 /** 最小 ctx mock（仅暴露 apply 用到的面）。 */
 function mockCtx(
@@ -10,6 +11,12 @@ function mockCtx(
   tools: Array<{ name: string }>,
 ): Context {
   return {
+    effect(effect: () => () => void) {
+      return effect();
+    },
+    provide(name: string, value: unknown) {
+      (this as Record<string, unknown>)[name] = value;
+    },
     systemPrompt: {
       section(section: { name: string; order: number; text: string }) {
         sections.push(section);
@@ -97,5 +104,29 @@ describe("a2ui-adapter", () => {
     }, { agent: {}, callId: "call-invalid" })).rejects.toThrow(
       'messages[1].version must be exactly "v0.9.1"',
     );
+  });
+
+  it("uses catalog libraries registered after the adapter tool is created", async () => {
+    const sections: Array<{ name: string; order: number; text: string }> = [];
+    const tools: Array<{ name: string; execute?: (args: unknown, exec: unknown) => Promise<unknown> }> = [];
+    const ctx = mockCtx(sections, tools as Array<{ name: string }>) as Context & { a2uiCatalogs: A2uiCatalogRegistry };
+    apply(ctx, { teaching: false });
+    const dispose = ctx.a2uiCatalogs.register({
+      catalog: {
+        catalogId: "dsh-example",
+        components: [{ component: "notice", properties: [{ name: "body", type: "string" }], limits: { maxStringLength: 100 } }],
+      },
+    });
+    const tool = tools.find((candidate) => candidate.name === A2UI_TOOL_NAME);
+
+    const result = await tool?.execute?.({
+      messages: [{
+        version: "v0.9.1",
+        createSurface: { surfaceId: "example", catalogId: "dsh-example", components: [{ id: "root", component: "notice", body: "Ready" }] },
+      }],
+    }, { agent: {}, callId: "call-example" });
+
+    expect((result as { componentNames: string[] }).componentNames).toEqual(["notice"]);
+    dispose();
   });
 });

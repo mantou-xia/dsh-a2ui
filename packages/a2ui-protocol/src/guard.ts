@@ -12,7 +12,8 @@
  * 无副作用，工具落定时可调用 inspectA2uiDocument 获取诊断与统计。
  */
 
-import { getCatalogComponent, isCatalogComponent, resolveCatalog } from "./catalog/dsh-basic.js";
+import { createDshBasicCatalogRegistry, getCatalogComponent, isCatalogComponent } from "./catalog/dsh-basic.js";
+import type { A2uiCatalogRegistry } from "./catalog/registry.js";
 import type { A2uiCatalog, CatalogProperty } from "./catalog/types.js";
 import type { A2uiComponent } from "./protocol/messages.js";
 import type {
@@ -158,6 +159,15 @@ function sanitizeProperty(value: unknown, def: CatalogProperty): A2uiComponentPr
     }
     case "object":
       return isPlainRecord(value) ? value : undefined;
+    case "object[]": {
+      if (!Array.isArray(value)) {
+        return undefined;
+      }
+      const out = value
+        .slice(0, A2UI_LIMITS.maxChildren)
+        .filter((item): item is Record<string, unknown> => isPlainRecord(item));
+      return out.length > 0 ? out : undefined;
+    }
     case "chart-series":
       return sanitizeChartSeries(value, def.maxLength ?? 60);
     case "bound":
@@ -267,12 +277,12 @@ function repairComponentTree(rawComponents: unknown, catalog: A2uiCatalog): A2ui
 }
 
 /** 修复 createSurface 载荷；surfaceId/catalog 非法或组件树不可修复 → null。 */
-function repairCreateSurface(value: Record<string, unknown>): A2uiCreateSurface | null {
+function repairCreateSurface(value: Record<string, unknown>, catalogRegistry: A2uiCatalogRegistry): A2uiCreateSurface | null {
   const surfaceId = truncateString(value.surfaceId, A2UI_LIMITS.maxIdLength);
   if (surfaceId === undefined || surfaceId.length === 0) {
     return null;
   }
-  const catalog = resolveCatalog(typeof value.catalogId === "string" ? value.catalogId : undefined);
+  const catalog = catalogRegistry.resolve(typeof value.catalogId === "string" ? value.catalogId : undefined);
   if (catalog === undefined) {
     return null;
   }
@@ -294,7 +304,7 @@ function repairCreateSurface(value: Record<string, unknown>): A2uiCreateSurface 
  * 幂等修复一个 A2UI envelope。仅支持 createSurface（MVP）；
  * 非 v0.9.1 / 非 createSurface / 结构不可修复 → null。
  */
-export function repairA2uiEnvelope(input: unknown): A2uiEnvelope | null {
+export function repairA2uiEnvelope(input: unknown, catalogRegistry = createDshBasicCatalogRegistry()): A2uiEnvelope | null {
   if (!isPlainRecord(input)) {
     return null;
   }
@@ -304,7 +314,7 @@ export function repairA2uiEnvelope(input: unknown): A2uiEnvelope | null {
   if (!isPlainRecord(input.createSurface)) {
     return null;
   }
-  const createSurface = repairCreateSurface(input.createSurface);
+  const createSurface = repairCreateSurface(input.createSurface, catalogRegistry);
   if (createSurface === null) {
     return null;
   }
@@ -357,7 +367,7 @@ function repairDeleteSurface(value: Record<string, unknown>): A2uiDeleteSurface 
  * existing one. Action/error envelopes are intentionally not accepted here:
  * `a2ui_render` persists a UI document, not client-to-agent traffic.
  */
-function repairA2uiDocumentInternal(input: readonly unknown[]): A2uiEnvelope[] | null {
+function repairA2uiDocumentInternal(input: readonly unknown[], catalogRegistry: A2uiCatalogRegistry): A2uiEnvelope[] | null {
   if (input.length === 0) {
     return null;
   }
@@ -369,13 +379,13 @@ function repairA2uiDocumentInternal(input: readonly unknown[]): A2uiEnvelope[] |
       return null;
     }
     if ("createSurface" in value) {
-      const envelope = repairA2uiEnvelope(value);
+      const envelope = repairA2uiEnvelope(value, catalogRegistry);
       if (envelope === null || !("createSurface" in envelope)) {
         return null;
       }
       if (index === 0 || repaired.length > 0) {
         repaired.push(envelope);
-        const catalog = resolveCatalog(envelope.createSurface.catalogId);
+        const catalog = catalogRegistry.resolve(envelope.createSurface.catalogId);
         if (catalog === undefined) return null;
         catalogs.set(envelope.createSurface.surfaceId, catalog);
         continue;
@@ -539,8 +549,8 @@ function reportRejectedLifecycle(
  * The diagnostics intentionally contain paths and rule outcomes only, never raw
  * component values or data-model values.
  */
-export function inspectA2uiDocument(input: readonly unknown[]): A2uiDocumentInspection {
-  const document = repairA2uiDocumentInternal(input);
+export function inspectA2uiDocument(input: readonly unknown[], catalogRegistry = createDshBasicCatalogRegistry()): A2uiDocumentInspection {
+  const document = repairA2uiDocumentInternal(input, catalogRegistry);
   const diagnostics: A2uiGuardDiagnostic[] = [];
   const mutableStats = {
     inputEnvelopeCount: input.length,
@@ -565,6 +575,6 @@ export function inspectA2uiDocument(input: readonly unknown[]): A2uiDocumentInsp
 }
 
 /** 修复完整 A2UI document；需要诊断时使用 inspectA2uiDocument。 */
-export function repairA2uiDocument(input: readonly unknown[]): A2uiEnvelope[] | null {
-  return repairA2uiDocumentInternal(input);
+export function repairA2uiDocument(input: readonly unknown[], catalogRegistry = createDshBasicCatalogRegistry()): A2uiEnvelope[] | null {
+  return repairA2uiDocumentInternal(input, catalogRegistry);
 }

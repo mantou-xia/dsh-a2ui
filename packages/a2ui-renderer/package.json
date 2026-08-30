@@ -9,6 +9,7 @@
       "default": "./lib/index.js"
     },
     "./client": {
+      "types": "./src/client/api.ts",
       "default": "./lib/client.js"
     },
     "./src/*": "./src/*",

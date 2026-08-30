@@ -1,6 +1,6 @@
 # dsh-a2ui 开发状态
 
-> 更新时间：2026-08-24。P1、P2 已完成；本文件记录当前能力、验收证据、已知边界和后续扩展方向。
+> 更新时间：2026-08-29。P1、P2 与组件库注册表基础已完成；本文件记录当前能力、验收证据、已知边界和后续扩展方向。
 
 ## 1. 当前能力矩阵
 
@@ -21,6 +21,7 @@
 | DSH API 兼容检查 | 已完成 | adapter/client runtime capability 单测 + 真实插件加载 |
 | 模型协议自纠正 | 已完成 | envelope 索引级错误诊断测试 + lifecycle teaching |
 | chart 重绘防丢 | 已完成 | 同会话 durable 快照恢复与 `labels`/`series` 安全回填测试 |
+| 可热插拔组件库 | 已完成 | catalog guard 注册/卸载、工具动态解析、React renderer 卸载测试和独立示例库 |
 
 ## 2. P2 完成项
 
@@ -87,7 +88,7 @@ P3 release smoke test
 
 1. 新的 `a2ui_render` 调用代表新的完整 document。若 action 后重绘仍需保留绑定值，模型必须在新调用中重复发送 `updateDataModel`；系统不会猜测任意业务 dataModel 的跨调用合并规则。
 2. chart 仅对同 surface、同组件 id、同类型图表中遗漏的 `labels` / `series` 做安全回填；显式空值仍表示业务方确实要清空。
-3. catalog 当前只开放十个组件，以保持 guard、样式和 action 语义可控。
+3. 每个外部 catalog 必须同时安装宿主和浏览器半部；系统不会从一侧推断另一侧的组件语义。
 4. ECharts 已按需注册，client bundle 由约 1.74 MB 降至约 1.32 MB；首次加载成本仍可继续通过延迟加载优化。
 5. DSH API 尚可能发生破坏性变化；runtime guard 能把问题显性化，但不能替代升级后的真实回归。
 
@@ -108,7 +109,7 @@ P3 release smoke test
 
 ### 优先级 C：组件与业务能力
 
-- 扩展日期/时间、开关、滑块、分页表格、tabs、modal、文件选择等常用组件。
+- 扩展分页表格、排序、空态和业务专用 catalog；日期/时间、开关、滑块、tabs、modal、文件选择已进入 `dsh-basic`。
 - 给 table 增加排序、分页、空态和列格式化；给 chart 增加多轴、堆叠、数据缩放和可访问文本摘要。
 - 设计受控的数据请求 action：通过 allowlist server handler 获取业务数据，而不是让前端组件任意访问网络。
 - 若业务需要跨工具调用保持复杂状态，再引入显式 surface state/dataModel store，并定义冲突、清空和回放规则。

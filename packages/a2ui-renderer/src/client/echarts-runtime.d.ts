@@ -21,6 +21,7 @@ declare module "echarts/charts" {
 }
 
 declare module "echarts/components" {
+  export const DataZoomComponent: unknown;
   export const GridComponent: unknown;
   export const LegendComponent: unknown;
   export const TooltipComponent: unknown;

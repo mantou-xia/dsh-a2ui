@@ -9,6 +9,7 @@
 import { apply } from "./apply.js";
 import { A2UI_TEACHING } from "./teaching.js";
 import { A2UI_TOOL_NAME, A2UI_META_KIND } from "./tool.js";
+import { provideA2uiCatalogs, registerA2uiCatalog } from "./catalog-registry.js";
 
 /** Stable Cordis plugin name。 */
 export const name = "dsh-a2ui";
@@ -24,4 +25,12 @@ export interface Config {
 
 export type A2uiAdapterConfig = Config;
 
-export { apply, A2UI_TEACHING, A2UI_TOOL_NAME, A2UI_META_KIND };
+export {
+  apply,
+  A2UI_TEACHING,
+  A2UI_TOOL_NAME,
+  A2UI_META_KIND,
+  provideA2uiCatalogs,
+  registerA2uiCatalog,
+};
+export type { A2uiCatalogRegistration } from "@dsh-a2ui/a2ui-protocol";

@@ -75,7 +75,7 @@ describe("P2 A2UI complete flow", () => {
     const rendered = render(view(chatData(preview), sendAction));
 
     expect(screen.getByText("初始")).not.toBeNull();
-    expect(screen.getByRole("img", { name: "bars chart" })).not.toBeNull();
+    expect(screen.getByRole("img", { name: /月度销售。横轴为一月、二月。数据为销售额：120、150。/ })).not.toBeNull();
     expect(echarts.init).toHaveBeenCalledTimes(1);
 
     const document = messages.map((message) => JSON.stringify(message)).join("\n");

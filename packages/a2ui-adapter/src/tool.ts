@@ -17,6 +17,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import type { GenericCallView, GenericResultView, ToolResult } from "@deepseek-ai/dsh-tools";
 import type { JsonValue } from "@deepseek-ai/dsh-session";
 import {
+  type A2uiCatalogRegistry,
   inspectA2uiDocument,
   reduceA2uiDocument,
 } from "@dsh-a2ui/a2ui-protocol";
@@ -57,7 +58,7 @@ function serializeDocument(messages: readonly unknown[]): string {
 }
 
 /** 详细诊断并抛错（错误信息 model-visible，让模型能自我修正）。 */
-function validateCreateSurfaceMessage(value: unknown): never | void {
+function validateCreateSurfaceMessage(value: unknown, catalogs: A2uiCatalogRegistry): never | void {
   if (!isPlainRecord(value)) {
     throw new Error("a2ui_render: messages[0] must be a JSON object (an A2UI envelope)");
   }
@@ -75,9 +76,14 @@ function validateCreateSurfaceMessage(value: unknown): never | void {
   if (typeof cs.surfaceId !== "string" || cs.surfaceId.length === 0) {
     throw new Error('a2ui_render: messages[0].createSurface.surfaceId must be a non-empty string (use a stable id like "report-1")');
   }
-  if (cs.catalogId !== undefined && cs.catalogId !== "dsh-basic") {
+  if (typeof cs.catalogId !== "undefined" && typeof cs.catalogId !== "string") {
     throw new Error(
-      `a2ui_render: messages[0].createSurface.catalogId must be "dsh-basic" or omitted (got ${JSON.stringify(cs.catalogId)})`,
+      `a2ui_render: messages[0].createSurface.catalogId must be a string or omitted (got ${JSON.stringify(cs.catalogId)})`,
+    );
+  }
+  if (catalogs.resolve(cs.catalogId) === undefined) {
+    throw new Error(
+      `a2ui_render: messages[0].createSurface.catalogId must name a registered catalog (${catalogs.catalogIds().join(", ")}) or be omitted`,
     );
   }
   if (!Array.isArray(cs.components)) {
@@ -120,14 +126,15 @@ function validateDocumentMessages(messages: readonly unknown[]): void {
 /**
  * 注册 `a2ui_render`。
  * @param ctx - 携带工具注册表的上下文。
+ * @param catalogs - 当前 composition 激活的 catalog registry。
  */
-export function applyA2uiTool(ctx: Context): void {
+export function applyA2uiTool(ctx: Context, catalogs: A2uiCatalogRegistry): void {
   ctx.tools.register(defineTool({
     name: A2UI_TOOL_NAME,
     description:
       "Generate an interactive UI — charts, KPI cards, tables, forms, or a dashboard — shown inline "
       + "in the conversation. Author the A2UI v0.9.1 messages yourself and pass them as `messages` "
-      + "(createSurface first, catalogId \"dsh-basic\", root component id \"root\"), following the A2UI "
+      + "(createSurface first, a registered catalogId or the default catalog, root component id \"root\"), following the A2UI "
       + "authoring guide in your system prompt. The client renders them as you write the call, streaming. "
       + "Returns text only and writes no files; author the whole UI in one call and do not repeat it as text.",
     parameters: {
@@ -169,9 +176,9 @@ export function applyA2uiTool(ctx: Context): void {
       // 完整 document 仍要求首条为 createSurface，后续可包含所有生命周期消息。
       const envelope = messages[0];
       // 详细诊断（model-visible 错误）后让 guard 修一次（防御）。
-      validateCreateSurfaceMessage(envelope);
+      validateCreateSurfaceMessage(envelope, catalogs);
       validateDocumentMessages(messages);
-      const inspection = inspectA2uiDocument(messages);
+      const inspection = inspectA2uiDocument(messages, catalogs);
       const repairedDocument = inspection.document;
       const repairedFirst = repairedDocument?.[0];
       if (repairedFirst === undefined || !("createSurface" in repairedFirst)) {

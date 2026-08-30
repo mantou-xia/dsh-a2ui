@@ -13,7 +13,9 @@ import type {} from "@deepseek-ai/dsh-client-ui-theme/client";
 import { injectA2uiStyles } from "./a2ui-css.ts";
 import { createActionSender } from "./dispatch.ts";
 import { A2uiNodeView, type A2uiNodeInjected } from "./components/A2uiNodeView.tsx";
+import { registerDshBasicComponents } from "./components/dsh-basic.tsx";
 import { registerA2uiConversationNode } from "./definition.ts";
+import { A2uiComponentRegistry } from "./registry.ts";
 import { assertA2uiClientCapabilities } from "./runtime.ts";
 
 /** 依赖的 client 侧服务。 */
@@ -25,6 +27,9 @@ export const inject = ["conversationEvents", "slots", "sessions", "theme"];
  */
 export function apply(ctx: ClientContext): void {
   assertA2uiClientCapabilities(ctx);
+  const a2uiRenderer = new A2uiComponentRegistry();
+  ctx.provide("a2uiRenderer", a2uiRenderer);
+  ctx.effect(() => registerDshBasicComponents(a2uiRenderer), "a2ui renderer dsh-basic");
   injectA2uiStyles();
   registerA2uiConversationNode(ctx);
   ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
@@ -33,6 +38,10 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: SessionId): A2uiNodeInjected => ({
       sendAction: createActionSender(ctx, sessionId),
       colorScheme: ctx.theme.getTheme().active.colorScheme,
+      a2uiRenderer,
     }),
   }, A2uiNodeView));
 }
+
+export { A2uiComponentRegistry } from "./registry.ts";
+export type { A2uiComponentRenderer, A2uiComponentRendererProps } from "./registry.ts";
