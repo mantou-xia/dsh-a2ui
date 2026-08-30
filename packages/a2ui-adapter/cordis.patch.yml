@@ -11,6 +11,8 @@
 - insert:
     - id: dsh-a2ui
       name: '@dsh-a2ui/a2ui-adapter'
+      config:
+        profileName: web
 
     - id: dsh-a2ui-renderer
       name: '@dsh-a2ui/a2ui-renderer'

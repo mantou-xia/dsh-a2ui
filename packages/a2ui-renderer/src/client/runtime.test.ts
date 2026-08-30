@@ -8,6 +8,7 @@ describe("a2ui renderer runtime compatibility", () => {
       slots: { inject() {}, register() {} },
       sessions: { scope() {} },
       theme: { getTheme() {} },
+      workspaces: { pickDirectory() {} },
     })).not.toThrow();
   });
 

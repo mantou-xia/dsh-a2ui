@@ -1,18 +1,32 @@
 {
   "name": "@dsh-a2ui/a2ui-adapter",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "A2UI host-side plugin for dsh: registers the a2ui_render tool (model authors an A2UI document, tool persists it to tool/result.meta) and injects the A2UI teaching section",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mantou-xia/dsh-a2ui.git",
+    "directory": "packages/a2ui-adapter"
+  },
   "type": "module",
   "main": "lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib",
+    "README.md",
+    "cordis.patch.yml"
+  ],
+  "keywords": ["a2ui", "deepseek", "dsh", "cordis", "plugin"],
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -20,17 +34,23 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "tsdown"
+    "build": "tsdown",
+    "prepack": "pnpm run build"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=0.1.0-rc.5",
-    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.5"
+    "@deepseek-ai/dsh-host-webserver": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.5",
+    "@dsh-a2ui/a2ui-renderer": "^0.1.0-beta.1"
   },
   "devDependencies": {
     "@dsh-a2ui/a2ui-protocol": "link:../a2ui-protocol",
+    "@dsh-a2ui/a2ui-renderer": "link:../a2ui-renderer",
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-session": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.1.1-rc.2",
     "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
+    "@types/node": "^22.10.0",
     "typescript": "^5.5.0"
   }
 }

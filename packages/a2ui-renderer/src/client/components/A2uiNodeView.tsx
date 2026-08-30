@@ -16,6 +16,7 @@ import {
   FieldSetContext,
   FieldValuesContext,
 } from "./interactive.tsx";
+import { A2uiCanvas } from "./A2uiCanvas.tsx";
 import { registerDshBasicComponents } from "./dsh-basic.tsx";
 
 const fallbackRegistry = new A2uiComponentRegistry();
@@ -62,7 +63,11 @@ function ComponentNode({
   const Renderer = registry.resolve(catalogId, component.component);
   return Renderer === undefined
     ? null
-    : <Renderer component={component} childComponents={children} emit={(action) => emit(component.id, action)} colorScheme={colorScheme}>{childNodes}</Renderer>;
+    : (
+      <div className="a2ui-component" data-a2ui-component={component.component} data-a2ui-component-id={component.id}>
+        <Renderer component={component} childComponents={children} emit={(action) => emit(component.id, action)} colorScheme={colorScheme}>{childNodes}</Renderer>
+      </div>
+    );
 }
 
 /** 一个 surface 的快照渲染（补 surfaceId + componentId 后回传）。 */
@@ -94,11 +99,11 @@ function SurfaceView({
     });
   }, [sendAction, snapshot.surfaceId]);
   return (
-    <div className="a2ui-surface" data-a2ui-surface={snapshot.surfaceId}>
+    <A2uiCanvas surfaceId={snapshot.surfaceId}>
       <DataModelContext.Provider value={snapshot.dataModel ?? {}}>
         <ComponentNode component={root} components={components} emit={emit} colorScheme={colorScheme} catalogId={snapshot.catalogId} registry={registry} />
       </DataModelContext.Provider>
-    </div>
+    </A2uiCanvas>
   );
 }
 

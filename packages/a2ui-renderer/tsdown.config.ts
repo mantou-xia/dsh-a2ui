@@ -33,7 +33,7 @@ const nodeConfig: UserConfig = {
   platform: "node",
   target: "es2024",
   fixedExtension: false,
-  dts: false,
+  dts: true,
   clean: true,
 };
 
@@ -66,4 +66,16 @@ const clientConfig: UserConfig = {
   },
 };
 
-export default [nodeConfig, clientConfig];
+/** Type-only public entry for custom browser component-library authors. */
+const clientTypesConfig: UserConfig = {
+  name: "@dsh-a2ui/a2ui-renderer/client-types",
+  entry: { "client-types": "src/client/api.ts" },
+  outDir: "lib",
+  format: ["esm"],
+  platform: "neutral",
+  target: "es2024",
+  dts: true,
+  clean: false,
+};
+
+export default [nodeConfig, clientConfig, clientTypesConfig];

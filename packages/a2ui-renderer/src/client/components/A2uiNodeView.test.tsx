@@ -12,6 +12,7 @@ import type { A2uiChatData } from "../chat-data.ts";
 import { A2uiNodeView, type A2uiNodeProps } from "./A2uiNodeView.tsx";
 import type { UiAction } from "../dispatch.ts";
 import { A2uiComponentRegistry } from "../registry.ts";
+import { setA2uiSkin } from "../skins.ts";
 
 const echarts = vi.hoisted(() => {
   const chart = { dispose: vi.fn(), resize: vi.fn(), setOption: vi.fn() };
@@ -23,6 +24,7 @@ vi.mock("echarts/core", () => echarts);
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  setA2uiSkin("studio");
 });
 
 function renderNode(
@@ -74,6 +76,13 @@ describe("A2uiNodeView: 静态组件渲染", () => {
     }));
     expect(screen.getByText("128 万")).not.toBeNull();
     expect(screen.getByText("总销售额")).not.toBeNull();
+    const canvas = screen.getByText("128 万").closest("[data-a2ui-canvas]");
+    expect(canvas?.getAttribute("data-a2ui-canvas")).toBe("report-1");
+    expect(canvas?.getAttribute("data-a2ui-skin")).toBe("studio");
+    act(() => setA2uiSkin("contrast"));
+    expect(canvas?.getAttribute("data-a2ui-skin")).toBe("contrast");
+    expect(canvas?.querySelector('[data-a2ui-component="grid"]')).not.toBeNull();
+    expect(canvas?.querySelector('[data-a2ui-component="stat"]')).not.toBeNull();
   });
 
   it("renders table with headers and rows via children resolution", () => {

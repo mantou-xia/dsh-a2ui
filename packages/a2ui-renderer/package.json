@@ -1,25 +1,40 @@
 {
   "name": "@dsh-a2ui/a2ui-renderer",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "A2UI browser half for dsh: renders the a2ui_render surface inline in the chat (tool/result.meta driven), with static + interactive components and <ui_action> back-channel",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mantou-xia/dsh-a2ui.git",
+    "directory": "packages/a2ui-renderer"
+  },
   "type": "module",
   "main": "lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
+      "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
     "./client": {
-      "types": "./src/client/api.ts",
+      "types": "./lib/client-types.d.ts",
       "default": "./lib/client.js"
     },
-    "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib",
+    "README.md"
+  ],
+  "keywords": ["a2ui", "deepseek", "dsh", "react", "plugin"],
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
   "dsh": {
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-theme"
       ],
       "platform": "web"
@@ -27,13 +42,15 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "tsdown"
+    "build": "tsdown",
+    "prepack": "pnpm run build"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-conversation": ">=0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-slots": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-theme": ">=0.1.0-rc.5",
     "react": "^18.2.0 || ^19.0.0"
   },
@@ -42,6 +59,7 @@
     "@deepseek-ai/dsh-client-runtime": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-conversation": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-theme": "0.1.1-rc.2",
     "@dsh-a2ui/a2ui-protocol": "link:../a2ui-protocol",
     "@testing-library/dom": "^10.4.0",

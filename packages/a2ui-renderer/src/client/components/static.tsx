@@ -119,7 +119,7 @@ export function CardView({ component, children }: { component: A2uiComponent; ch
 
 export function GridView({ component, children }: { component: A2uiComponent; children?: ReactNode }): ReactNode {
   const columns = Math.max(1, Math.min(6, Math.round(num(component, "columns", 2))));
-  return <div className="a2ui-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>{children}</div>;
+  return <div className="a2ui-grid" data-a2ui-grid-columns={columns} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>{children}</div>;
 }
 
 export function TabsView({ component, children }: { component: A2uiComponent; children?: ReactNode }): ReactNode {

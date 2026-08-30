@@ -1,0 +1,5 @@
+# Mount the example catalog's host half. Its dsh.client declaration separately
+# contributes the browser renderer when this bundle is present in a web profile.
+- insert:
+    - id: dsh-a2ui-catalog-example
+      name: '@dsh-a2ui/a2ui-catalog-example'

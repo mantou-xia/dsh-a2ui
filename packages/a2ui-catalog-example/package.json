@@ -1,6 +1,6 @@
 {
   "name": "@dsh-a2ui/a2ui-catalog-example",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "private": true,
   "description": "Example hot-pluggable A2UI catalog library",
   "type": "module",
@@ -13,13 +13,25 @@
       "types": "./src/client.tsx",
       "default": "./lib/client.js"
     },
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "inject": ["@dsh-a2ui/a2ui-renderer"],
       "platform": "web"
     }
+  },
+  "a2ui": {
+    "catalog": {
+      "id": "dsh-example",
+      "components": ["notice"]
+    },
+    "host": "./lib/index.js",
+    "client": "./lib/client.js"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -28,9 +40,9 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=0.1.0-rc.5",
     "@deepseek-ai/dsh-system-prompt": ">=0.1.0-rc.5",
-    "@dsh-a2ui/a2ui-adapter": "^0.1.0",
-    "@dsh-a2ui/a2ui-protocol": "^0.1.0",
-    "@dsh-a2ui/a2ui-renderer": "^0.1.0",
+    "@dsh-a2ui/a2ui-adapter": "^0.1.0-beta.1",
+    "@dsh-a2ui/a2ui-protocol": "^0.1.0-beta.1",
+    "@dsh-a2ui/a2ui-renderer": "^0.1.0-beta.1",
     "react": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
@@ -40,6 +52,7 @@
     "@dsh-a2ui/a2ui-adapter": "link:../a2ui-adapter",
     "@dsh-a2ui/a2ui-protocol": "link:../a2ui-protocol",
     "@dsh-a2ui/a2ui-renderer": "link:../a2ui-renderer",
+    "@types/node": "^22.10.0",
     "@types/react": "~18.3.1",
     "react": "^18.2.0",
     "tsdown": "^0.22.2",

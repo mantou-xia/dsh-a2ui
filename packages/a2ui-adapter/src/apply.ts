@@ -12,6 +12,7 @@ import { provideA2uiCatalogs } from "./catalog-registry.js";
 import { A2UI_TEACHING } from "./teaching.js";
 import { assertA2uiHostCapabilities } from "./runtime.js";
 import { applyA2uiTool } from "./tool.js";
+import { registerA2uiCatalogImportRoute } from "./catalog-importer.js";
 
 /** A2UI 教学段名与顺序（顺序约定：100–199 为工具/协议指引）。 */
 export const A2UI_SECTION_NAME = "a2ui" as const;
@@ -29,7 +30,7 @@ Every \`chart\` must include non-empty \`series\`. Prefer this exact canonical s
 The catalog also accepts \`[{"name":"Sales","values":[120,150]}]\` or \`[{"label":"Jan","value":120}]\` for \`series\`; never omit \`series\` while rendering a chart.
 `;
 
-export function apply(ctx: Context, config: { teaching?: boolean } | undefined): void {
+export function apply(ctx: Context, config: { teaching?: boolean; profileName?: string } | undefined): void {
   assertA2uiHostCapabilities(ctx);
   const catalogs = provideA2uiCatalogs(ctx);
   if (config?.teaching !== false) {
@@ -40,4 +41,5 @@ export function apply(ctx: Context, config: { teaching?: boolean } | undefined):
     });
   }
   applyA2uiTool(ctx, catalogs);
+  registerA2uiCatalogImportRoute(ctx, config?.profileName);
 }

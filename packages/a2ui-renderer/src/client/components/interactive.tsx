@@ -35,6 +35,10 @@ function numberValue(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function accessibleLabel(component: A2uiComponent, fallback: string): string {
+  return str(component, "label") || str(component, "placeholder") || fallback;
+}
+
 export function ButtonView({ component, onAction }: { component: A2uiComponent; onAction: A2uiActionHandler }): ReactNode {
   const declared = action(component.action);
   const disabled = component.disabled === true || declared === undefined;
@@ -50,7 +54,7 @@ export function InputView({ component }: { component: A2uiComponent }): ReactNod
     setValue(next);
     setField(component.id, next);
   }, [component.id, component.value, dataModel, setField]);
-  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input" type={str(component, "type") === "number" ? "number" : "text"} value={value} placeholder={str(component, "placeholder")} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }} /></label>;
+  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input" aria-label={accessibleLabel(component, "输入内容")} type={str(component, "type") === "number" ? "number" : "text"} value={value} placeholder={str(component, "placeholder")} disabled={component.disabled === true} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }} /></label>;
 }
 
 export function SelectView({ component }: { component: A2uiComponent }): ReactNode {
@@ -63,7 +67,7 @@ export function SelectView({ component }: { component: A2uiComponent }): ReactNo
     setField(component.id, next);
   }, [component.id, component.value, dataModel, setField]);
   const options = Array.isArray(component.options) ? component.options.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item)) : [];
-  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<select className="a2ui-select" value={value} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }}><option value="">请选择</option>{options.map((option) => typeof option.value === "string" ? <option key={option.value} value={option.value}>{typeof option.label === "string" ? option.label : option.value}</option> : null)}</select></label>;
+  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<select className="a2ui-select" aria-label={accessibleLabel(component, "请选择")} value={value} disabled={component.disabled === true} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }}><option value="">请选择</option>{options.map((option) => typeof option.value === "string" ? <option key={option.value} value={option.value}>{typeof option.label === "string" ? option.label : option.value}</option> : null)}</select></label>;
 }
 
 export function DateTimeView({ component }: { component: A2uiComponent }): ReactNode {
@@ -77,7 +81,7 @@ export function DateTimeView({ component }: { component: A2uiComponent }): React
   }, [component.id, component.value, dataModel, setField]);
   const mode = str(component, "mode");
   const type = mode === "time" || mode === "datetime-local" ? mode : "date";
-  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input" type={type} value={value} min={str(component, "min")} max={str(component, "max")} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }} /></label>;
+  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input" aria-label={accessibleLabel(component, "日期和时间")} type={type} value={value} min={str(component, "min")} max={str(component, "max")} disabled={component.disabled === true} onChange={(event) => { setValue(event.target.value); setField(component.id, event.target.value); }} /></label>;
 }
 
 export function SwitchView({ component }: { component: A2uiComponent }): ReactNode {
@@ -89,7 +93,7 @@ export function SwitchView({ component }: { component: A2uiComponent }): ReactNo
     setChecked(next);
     setField(component.id, next);
   }, [component.id, component.value, dataModel, setField]);
-  return <label className="a2ui-switch"><input type="checkbox" role="switch" checked={checked} disabled={component.disabled === true} onChange={(event) => { setChecked(event.target.checked); setField(component.id, event.target.checked); }} /><span>{str(component, "label")}</span></label>;
+  return <label className="a2ui-switch"><input className="a2ui-switch-control" aria-label={accessibleLabel(component, "开关")} type="checkbox" role="switch" checked={checked} disabled={component.disabled === true} onChange={(event) => { setChecked(event.target.checked); setField(component.id, event.target.checked); }} /><span>{str(component, "label")}</span></label>;
 }
 
 export function SliderView({ component }: { component: A2uiComponent }): ReactNode {
@@ -105,12 +109,12 @@ export function SliderView({ component }: { component: A2uiComponent }): ReactNo
     setValue(next);
     setField(component.id, next);
   }, [component.id, component.value, dataModel, max, min, setField]);
-  return <label className="a2ui-field a2ui-slider">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<span><input type="range" min={min} max={max} step={step} value={value} disabled={component.disabled === true} onChange={(event) => { const next = Number(event.target.value); setValue(next); setField(component.id, next); }} /><output>{value}</output></span></label>;
+  return <label className="a2ui-field a2ui-slider">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<span><input aria-label={accessibleLabel(component, "滑块")} type="range" min={min} max={max} step={step} value={value} disabled={component.disabled === true} onChange={(event) => { const next = Number(event.target.value); setValue(next); setField(component.id, next); }} /><output>{value}</output></span></label>;
 }
 
 export function FileView({ component }: { component: A2uiComponent }): ReactNode {
   const setField = useContext(FieldSetContext);
-  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input" type="file" accept={str(component, "accept")} multiple={component.multiple === true} disabled={component.disabled === true} onChange={(event) => { const files = Array.from(event.target.files ?? []).map((file) => ({ name: file.name, size: file.size, type: file.type, lastModified: file.lastModified })); setField(component.id, files); }} /></label>;
+  return <label className="a2ui-field">{str(component, "label") && <span className="a2ui-field-label">{str(component, "label")}</span>}<input className="a2ui-input a2ui-file-input" aria-label={accessibleLabel(component, "选择文件")} type="file" accept={str(component, "accept")} multiple={component.multiple === true} disabled={component.disabled === true} onChange={(event) => { const files = Array.from(event.target.files ?? []).map((file) => ({ name: file.name, size: file.size, type: file.type, lastModified: file.lastModified })); setField(component.id, files); }} /></label>;
 }
 
 export function ModalView({ component, children, onAction }: { component: A2uiComponent; children?: ReactNode; onAction: A2uiActionHandler }): ReactNode {

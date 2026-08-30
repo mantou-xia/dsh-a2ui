@@ -21,6 +21,8 @@ export const inject = ["tools", "systemPrompt"];
 export interface Config {
   /** 是否注册 A2UI 教学段（默认 true）。 */
   teaching?: boolean;
+  /** 启用设置页本机组件库导入的 DSH profile 名；未配置时不注册安装接口。 */
+  profileName?: string;
 }
 
 export type A2uiAdapterConfig = Config;
@@ -33,4 +35,5 @@ export {
   provideA2uiCatalogs,
   registerA2uiCatalog,
 };
+export { inspectA2uiCatalogLibrary, installA2uiCatalogLibrary } from "./catalog-importer.js";
 export type { A2uiCatalogRegistration } from "@dsh-a2ui/a2ui-protocol";

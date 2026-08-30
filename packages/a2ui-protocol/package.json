@@ -1,14 +1,37 @@
 {
   "name": "@dsh-a2ui/a2ui-protocol",
-  "version": "0.1.0",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
+  "version": "0.1.0-beta.1",
+  "description": "Shared A2UI v0.9.1 protocol, catalogs, validation guard, and lifecycle reducer for DeepSeek Harness.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mantou-xia/dsh-a2ui.git",
+    "directory": "packages/a2ui-protocol"
   },
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "README.md"
+  ],
+  "keywords": ["a2ui", "deepseek", "dsh", "protocol"],
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsdown",
+    "prepack": "pnpm run build"
   },
   "devDependencies": {
+    "tsdown": "^0.22.2",
     "typescript": "^5.5.0"
   }
 }

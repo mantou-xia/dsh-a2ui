@@ -56,6 +56,16 @@ $files = @(
     profileRelative = "node_modules/@dsh-a2ui/a2ui-renderer/lib/client.js.map"
     source = Join-Path $repository "packages/a2ui-renderer/lib/client.js.map"
     backupRelative = "renderer/client.js.map"
+  },
+  [pscustomobject]@{
+    profileRelative = "node_modules/@dsh-a2ui/a2ui-catalog-example/lib/index.js"
+    source = Join-Path $repository "packages/a2ui-catalog-example/lib/index.js"
+    backupRelative = "catalog-example/index.js"
+  },
+  [pscustomobject]@{
+    profileRelative = "node_modules/@dsh-a2ui/a2ui-catalog-example/lib/client.js"
+    source = Join-Path $repository "packages/a2ui-catalog-example/lib/client.js"
+    backupRelative = "catalog-example/client.js"
   }
 )
 

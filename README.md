@@ -14,6 +14,7 @@
 - 运行时兼容保护：adapter 与 client 启动时检查关键 DSH API，版本不兼容时快速失败并给出明确错误。
 - guard 可观测性：工具详情中的 `meta.diagnostics` 和 `meta.guardStats` 会记录被过滤字段/组件与生命周期拒绝原因，不包含原始业务值。
 - 组件库注册表：宿主侧按 catalogId 校验，浏览器侧按 catalogId/component 分派 React renderer；两个注册都由 Cordis effect 管理，插件卸载后自动失效。
+- 设置页：独立 A2UI 设置分区支持 `studio`、`soft`、`contrast` 三套画布皮肤，能够导出组件库要求模板，并从本机目录导入受信任组件库。
 
 
 
@@ -64,6 +65,17 @@
 3. 每个 catalog component 都必须在两侧成对存在。宿主缺失则工具拒绝 document；浏览器缺失则该组件不渲染，避免猜测未知 UI 语义。
 4. `catalogId` 和同 catalog 内的 component 名在一个 composition 中唯一；重复注册会在加载时失败。注册返回的 disposer 只移除自身的贡献，热卸载不会误删新 owner。
 5. catalog 必须声明每个模型可写属性、字段类型和资源限额；组件库不得让 renderer 绕过 guard 自行接受任意属性或直接访问网络。
+6. 为支持设置页导入，`package.json` 还必须声明 `a2ui` 元数据，并且 `host` / `client` 指向已经构建的两个入口：
+
+```json
+{
+  "a2ui": {
+    "catalog": { "id": "your-catalog", "components": ["your-component"] },
+    "host": "./lib/index.js",
+    "client": "./lib/client.js"
+  }
+}
+```
 
 可复制的最小实现见 [a2ui-catalog-example](packages/a2ui-catalog-example/README.md)。安装它会额外提供 `dsh-example/notice`：
 
@@ -91,13 +103,25 @@ GitHub Actions 会固定执行 Node 22 质量门禁，并在 DSH `0.1.0-rc.5`、
 
 ```bash
 dsh plugin --profile web add file:D:/git-depository/dsh-a2ui/packages/a2ui-adapter \
-  file:D:/git-depository/dsh-a2ui/packages/a2ui-renderer
+  file:D:/git-depository/dsh-a2ui/packages/a2ui-renderer \
+  file:D:/git-depository/dsh-a2ui/packages/a2ui-catalog-example
 dsh --profile web
 ```
 
-安装后应能访问 `/plugins/@dsh-a2ui/a2ui-renderer/client.js`，并在插件配置中看到 adapter 与 renderer。
+安装后应能访问 `/plugins/@dsh-a2ui/a2ui-renderer/client.js`，并在插件配置中看到 adapter 与示例 catalog bundle。
 
-日常源码更新后使用部署脚本，不再手工复制 bundle。它会先构建、备份 profile 中的四个 bundle 文件、覆盖、逐文件验证 SHA-256；失败时不会把“未验证的覆盖”当作成功。
+## npm 预发布安装
+
+`0.1.0-beta.1` 起，对外发布 `protocol`、`adapter` 和 `renderer` 三个运行包；`a2ui-catalog-example` 仍是仓库内可复制的私有模板。使用 npm 预发布版本时，在 DSH Web profile 中同时安装 adapter 与 renderer：
+
+```bash
+dsh plugin --profile web add @dsh-a2ui/a2ui-adapter@beta @dsh-a2ui/a2ui-renderer@beta
+dsh --profile web
+```
+
+发布操作与 tarball 验收步骤见 [docs/PUBLISHING.md](docs/PUBLISHING.md)。
+
+日常源码更新后使用部署脚本，不再手工复制 bundle。它会先构建、备份 profile 中的六个 bundle 文件、覆盖、逐文件验证 SHA-256；失败时不会把“未验证的覆盖”当作成功。
 
 ```powershell
 # 构建、备份、覆盖并验证默认 web profile
@@ -112,6 +136,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Install-DshPro
 
 脚本的备份位于 `%USERPROFILE%\.dsh\backups`。覆盖或回滚后都需要重启 `dsh web`。
 
+## A2UI 设置页与本机组件库导入
+
+打开 DSH Web 设置中的 **A2UI** 分区即可切换画布皮肤。皮肤仅影响 A2UI 画布，并保存在当前浏览器的 `localStorage` 中，不会修改 profile 文件。
+
+“导出组件库要求模板”会下载带有 `dsh` 与 `a2ui` 元数据骨架的 JSON 模板。“导入本机组件库”使用浏览器原生目录选择器：选择包含已构建 `lib/` 的组件库目录后，宿主会校验 package 名、宿主/浏览器加载声明、catalog id、组件列表和两个入口文件，再对当前 profile 执行 `pnpm add file:<目录>` 并将 bundle 写入 profile 清单。导入成功后重启 `dsh web` 生效。
+
+导入目录中的插件代码会在本机 DSH 进程和浏览器客户端执行，因此只导入你信任、并已经审阅过的组件库。默认 adapter patch 配置的目标 profile 是 `web`；若使用其他 profile，需要将 adapter 的 `profileName` 配置改为对应名称。
+
 ## Authoring 关键约束
 
 - `messages[0]` 必须是包含 `id: "root"` 的 `createSurface`。
@@ -119,6 +151,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Install-DshPro
 - 数据绑定使用 `value: { "path": "/filters/month" }`，不存在 `valuePath` 字段。
 - 新工具调用是一个新的完整 document。若重绘后仍需保留绑定值，必须在该次调用中重新发送对应的 `updateDataModel`。
 - adapter 会在模型遗漏已有图表的 `labels` / `series` 时从同会话 durable 状态回填，但这只是防丢保护，不代替模型发送完整业务状态。
+
+## 画布布局规则
+
+每个 surface 都在 renderer 的 `a2ui-canvas` 中渲染。画布负责统一宽度、内边距、间距、响应式断点与面板视觉；组件库只定义组件的业务内容和交互，不应自行假定外层页面尺寸。
+
+- `grid.columns` 决定桌面端列数（1–6）；画布在宽度不超过 720px 时统一回退为单列。
+- `stat`、`callout`、`button` 和一般第三方组件各占一个 grid 单元。
+- `chart`、`table`、`form`、`card`、`tabs` 在 2–6 列 grid 中跨两个单元，给高信息密度内容保留可读宽度；单列 grid 不跨列。
+- 所有组件节点都会带 `data-a2ui-component` 类型标记。新组件库若需要专属排版，只能基于该标记在自己的浏览器 half 中补充样式，不能绕过 `a2ui-canvas`。
 
 
 

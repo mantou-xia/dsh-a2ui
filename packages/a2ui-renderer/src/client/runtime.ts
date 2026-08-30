@@ -5,6 +5,7 @@ type CapabilityContext = {
   slots?: { inject?: unknown; register?: unknown };
   sessions?: { scope?: unknown };
   theme?: { getTheme?: unknown };
+  workspaces?: { pickDirectory?: unknown };
 };
 
 function callable(value: unknown): boolean {
@@ -22,10 +23,11 @@ export function assertA2uiClientCapabilities(ctx: CapabilityContext): void {
   if (!callable(ctx.slots?.register)) missing.push("slots.register");
   if (!callable(ctx.sessions?.scope)) missing.push("sessions.scope");
   if (!callable(ctx.theme?.getTheme)) missing.push("theme.getTheme");
+  if (!callable(ctx.workspaces?.pickDirectory)) missing.push("workspaces.pickDirectory");
   if (missing.length > 0) {
     throw new Error(
       `[dsh-a2ui] incompatible DSH client: missing ${missing.join(", ")}. `
-      + "Install a DSH version exposing the conversation, slots, sessions, and theme client services.",
+      + "Install a DSH version exposing the conversation, slots, sessions, theme, and workspace client services.",
     );
   }
 }

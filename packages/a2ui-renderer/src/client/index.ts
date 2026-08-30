@@ -10,6 +10,7 @@ import type { ClientContext, SessionId } from "@deepseek-ai/dsh-client-runtime/c
 // Type-only: 引入 ui-conversation 的 SlotMap/类型合并与 ui-theme 的 Context merge。
 import type {} from "@deepseek-ai/dsh-client-ui-conversation/client";
 import type {} from "@deepseek-ai/dsh-client-ui-theme/client";
+import type {} from "@deepseek-ai/dsh-client-ui-settings/client";
 import { injectA2uiStyles } from "./a2ui-css.ts";
 import { createActionSender } from "./dispatch.ts";
 import { A2uiNodeView, type A2uiNodeInjected } from "./components/A2uiNodeView.tsx";
@@ -17,9 +18,11 @@ import { registerDshBasicComponents } from "./components/dsh-basic.tsx";
 import { registerA2uiConversationNode } from "./definition.ts";
 import { A2uiComponentRegistry } from "./registry.ts";
 import { assertA2uiClientCapabilities } from "./runtime.ts";
+import { A2uiSettingsSection, type A2uiSettingsInjected } from "./settings/A2uiSettingsSection.tsx";
+import { importA2uiCatalogDirectory } from "./settings/catalog-import.ts";
 
 /** 依赖的 client 侧服务。 */
-export const inject = ["conversationEvents", "slots", "sessions", "theme"];
+export const inject = ["conversationEvents", "slots", "sessions", "theme", "workspaces"];
 
 /**
  * Client plugin body：注入全局样式、注册节点 Definition 与 keyed renderer。
@@ -41,6 +44,16 @@ export function apply(ctx: ClientContext): void {
       a2uiRenderer,
     }),
   }, A2uiNodeView));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section",
+    id: "a2ui",
+    order: 18,
+    label: () => "A2UI",
+    inject: (): A2uiSettingsInjected => ({
+      chooseDirectory: () => ctx.workspaces.pickDirectory(),
+      importDirectory: importA2uiCatalogDirectory,
+    }),
+  }, A2uiSettingsSection));
 }
 
 export { A2uiComponentRegistry } from "./registry.ts";
