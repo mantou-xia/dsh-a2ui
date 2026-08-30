@@ -314,7 +314,7 @@ export function injectA2uiStyles(): void {
   }
   injected = true;
   const tag = document.createElement("style");
-  tag.dataset.plugin = "@dsh-a2ui/a2ui-renderer";
+  tag.dataset.plugin = "@dsh-plugin-edu/a2ui-renderer";
   tag.textContent = A2UI_CSS;
   document.head.appendChild(tag);
 }

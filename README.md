@@ -37,10 +37,10 @@
 
 | 包                                | 职责                                                                  |
 | -------------------------------- | ------------------------------------------------------------------- |
-| `@dsh-a2ui/a2ui-protocol`        | A2UI v0.9.1 类型、`dsh-basic` catalog、guard、document 生命周期归约            |
-| `@dsh-a2ui/a2ui-adapter`         | 注册 `a2ui_render`、宿主 catalog registry、模型教学、运行时兼容检查、profile bundle 装配 |
-| `@dsh-a2ui/a2ui-renderer`        | DSH client 节点定义、流式/回放解析、浏览器组件 registry、ECharts 与 action 回传          |
-| `@dsh-a2ui/a2ui-catalog-example` | 独立 `dsh-example` catalog，演示第三方组件库的双端接入与卸载                           |
+| `@dsh-plugin-edu/a2ui-protocol`        | A2UI v0.9.1 类型、`dsh-basic` catalog、guard、document 生命周期归约            |
+| `@dsh-plugin-edu/a2ui-adapter`         | 注册 `a2ui_render`、宿主 catalog registry、模型教学、运行时兼容检查、profile bundle 装配 |
+| `@dsh-plugin-edu/a2ui-renderer`        | DSH client 节点定义、流式/回放解析、浏览器组件 registry、ECharts 与 action 回传          |
+| `@dsh-plugin-edu/a2ui-catalog-example` | 独立 `dsh-example` catalog，演示第三方组件库的双端接入与卸载                           |
 
 
 
@@ -108,14 +108,14 @@ dsh plugin --profile web add file:D:/git-depository/dsh-a2ui/packages/a2ui-adapt
 dsh --profile web
 ```
 
-安装后应能访问 `/plugins/@dsh-a2ui/a2ui-renderer/client.js`，并在插件配置中看到 adapter 与示例 catalog bundle。
+安装后应能访问 `/plugins/@dsh-plugin-edu/a2ui-renderer/client.js`，并在插件配置中看到 adapter 与示例 catalog bundle。
 
 ## npm 预发布安装
 
 `0.1.0-beta.1` 起，对外发布 `protocol`、`adapter` 和 `renderer` 三个运行包；`a2ui-catalog-example` 仍是仓库内可复制的私有模板。使用 npm 预发布版本时，在 DSH Web profile 中同时安装 adapter 与 renderer：
 
 ```bash
-dsh plugin --profile web add @dsh-a2ui/a2ui-adapter@beta @dsh-a2ui/a2ui-renderer@beta
+dsh plugin --profile web add @dsh-plugin-edu/a2ui-adapter@beta @dsh-plugin-edu/a2ui-renderer@beta
 dsh --profile web
 ```
 

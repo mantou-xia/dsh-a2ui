@@ -1,6 +1,6 @@
 # a2ui-catalog-example
 
-`@dsh-a2ui/a2ui-catalog-example` 是可热插拔 A2UI 组件库的最小完整实现。
+`@dsh-plugin-edu/a2ui-catalog-example` 是可热插拔 A2UI 组件库的最小完整实现。
 
 它声明 `dsh-example` catalog，并提供一个 `notice` 组件：
 

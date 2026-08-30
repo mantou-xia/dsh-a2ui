@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { A2uiComponent } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent } from "@dsh-plugin-edu/a2ui-protocol";
 import { A2uiSurfaceStateStore, mergeA2uiSurface, type A2uiCreateSurfaceEnvelope } from "./surface-state.js";
 
 function surface(components: Record<string, unknown>[]): A2uiCreateSurfaceEnvelope {

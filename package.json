@@ -14,7 +14,7 @@
     "lint": "oxlint packages",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
-    "pack:dry-run": "pnpm -r --filter @dsh-a2ui/a2ui-protocol --filter @dsh-a2ui/a2ui-adapter --filter @dsh-a2ui/a2ui-renderer pack --dry-run",
+    "pack:dry-run": "pnpm -r --filter @dsh-plugin-edu/a2ui-protocol --filter @dsh-plugin-edu/a2ui-adapter --filter @dsh-plugin-edu/a2ui-renderer pack --dry-run",
     "release:check": "pnpm check && pnpm -r run build && pnpm run pack:dry-run"
   },
   "devDependencies": {

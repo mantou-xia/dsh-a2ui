@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-a2ui/a2ui-renderer",
+  "name": "@dsh-plugin-edu/a2ui-renderer",
   "version": "0.1.0-beta.1",
   "description": "A2UI browser half for dsh: renders the a2ui_render surface inline in the chat (tool/result.meta driven), with static + interactive components and <ui_action> back-channel",
   "license": "Apache-2.0",
@@ -61,7 +61,7 @@
     "@deepseek-ai/dsh-client-ui-slots": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-settings": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-theme": "0.1.1-rc.2",
-    "@dsh-a2ui/a2ui-protocol": "link:../a2ui-protocol",
+    "@dsh-plugin-edu/a2ui-protocol": "link:../a2ui-protocol",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^14.0.0",
     "@types/react": "~18.3.1",

@@ -5,7 +5,7 @@
 import type { UserConfig } from "tsdown";
 
 export default {
-  name: "@dsh-a2ui/a2ui-adapter",
+  name: "@dsh-plugin-edu/a2ui-adapter",
   entry: ["src/index.ts"],
   outDir: "lib",
   format: ["esm"],

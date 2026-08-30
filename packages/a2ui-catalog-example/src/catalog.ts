@@ -1,6 +1,6 @@
 /** Example catalog library definition shared by its host and browser halves. */
 
-import type { A2uiCatalogRegistration } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiCatalogRegistration } from "@dsh-plugin-edu/a2ui-protocol";
 
 export const A2UI_EXAMPLE_CATALOG_ID = "dsh-example" as const;
 

@@ -1,7 +1,7 @@
 /** Host half of the example hot-pluggable A2UI catalog library. */
 
 import type { Context } from "@deepseek-ai/cordis";
-import { registerA2uiCatalog } from "@dsh-a2ui/a2ui-adapter";
+import { registerA2uiCatalog } from "@dsh-plugin-edu/a2ui-adapter";
 import { A2UI_EXAMPLE_REGISTRATION } from "./catalog.js";
 
 /** Stable Cordis plugin name. */

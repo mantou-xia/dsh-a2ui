@@ -56,10 +56,10 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: 0.1.1-rc.2
         version: 0.1.1-rc.2(119bc70f73f8eddebfaa6b47561adeb3)
-      '@dsh-a2ui/a2ui-protocol':
+      '@dsh-plugin-edu/a2ui-protocol':
         specifier: link:../a2ui-protocol
         version: link:../a2ui-protocol
-      '@dsh-a2ui/a2ui-renderer':
+      '@dsh-plugin-edu/a2ui-renderer':
         specifier: link:../a2ui-renderer
         version: link:../a2ui-renderer
       '@types/node':
@@ -80,13 +80,13 @@ importers:
       '@deepseek-ai/dsh-system-prompt':
         specifier: 0.1.1-rc.2
         version: 0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-llm@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-attachment@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-brand@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-timeout@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1))))(@deepseek-ai/dsh-scope@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)))
-      '@dsh-a2ui/a2ui-adapter':
+      '@dsh-plugin-edu/a2ui-adapter':
         specifier: link:../a2ui-adapter
         version: link:../a2ui-adapter
-      '@dsh-a2ui/a2ui-protocol':
+      '@dsh-plugin-edu/a2ui-protocol':
         specifier: link:../a2ui-protocol
         version: link:../a2ui-protocol
-      '@dsh-a2ui/a2ui-renderer':
+      '@dsh-plugin-edu/a2ui-renderer':
         specifier: link:../a2ui-renderer
         version: link:../a2ui-renderer
       '@types/node':
@@ -141,7 +141,7 @@ importers:
       '@deepseek-ai/dsh-client-ui-theme':
         specifier: 0.1.1-rc.2
         version: 0.1.1-rc.2(0cc70faba9f4dcf975b44777354fc660)
-      '@dsh-a2ui/a2ui-protocol':
+      '@dsh-plugin-edu/a2ui-protocol':
         specifier: link:../a2ui-protocol
         version: link:../a2ui-protocol
       '@testing-library/dom':

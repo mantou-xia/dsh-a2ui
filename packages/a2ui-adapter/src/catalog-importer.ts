@@ -35,8 +35,8 @@ export function inspectA2uiCatalogLibrary(directory: string): { directory: strin
   const manifestPath = join(resolved, "package.json");
   if (!existsSync(manifestPath)) throw new Error("组件库目录缺少 package.json。");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
-  if (typeof manifest.name !== "string" || !manifest.name.startsWith("@dsh-a2ui/") || manifest.name.length === "@dsh-a2ui/".length) {
-    throw new Error("组件库 package.json 的 name 必须使用 @dsh-a2ui/ 命名空间。");
+  if (typeof manifest.name !== "string" || !manifest.name.startsWith("@dsh-plugin-edu/") || manifest.name.length === "@dsh-plugin-edu/".length) {
+    throw new Error("组件库 package.json 的 name 必须使用 @dsh-plugin-edu/ 命名空间。");
   }
   if (typeof manifest.dsh?.bundle?.patch !== "string" || !existsSync(join(resolved, manifest.dsh.bundle.patch))) {
     throw new Error("组件库必须声明存在的 dsh.bundle.patch 宿主加载文件。");

@@ -3,7 +3,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import { apply, A2UI_SECTION_NAME, A2UI_SECTION_ORDER } from "./apply.js";
 import { A2UI_TEACHING } from "./teaching.js";
 import { A2UI_TOOL_NAME } from "./tool.js";
-import type { A2uiCatalogRegistry } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiCatalogRegistry } from "@dsh-plugin-edu/a2ui-protocol";
 
 /** 最小 ctx mock（仅暴露 apply 用到的面）。 */
 function mockCtx(

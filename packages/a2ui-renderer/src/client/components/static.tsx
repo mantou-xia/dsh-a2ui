@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { A2uiComponent } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent } from "@dsh-plugin-edu/a2ui-protocol";
 import { createChartOption, EchartsView, type ChartSeries } from "./EchartsView.tsx";
 
 function str(component: A2uiComponent, key: string, fallback = ""): string {

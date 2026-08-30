@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { A2uiComponent } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent } from "@dsh-plugin-edu/a2ui-protocol";
 
 export interface A2uiActionHandler { (action: { name: string; payload?: unknown }): void; }
 export type FileMetadata = { name: string; size: number; type: string; lastModified: number };

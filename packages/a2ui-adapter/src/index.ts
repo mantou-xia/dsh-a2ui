@@ -36,4 +36,4 @@ export {
   registerA2uiCatalog,
 };
 export { inspectA2uiCatalogLibrary, installA2uiCatalogLibrary } from "./catalog-importer.js";
-export type { A2uiCatalogRegistration } from "@dsh-a2ui/a2ui-protocol";
+export type { A2uiCatalogRegistration } from "@dsh-plugin-edu/a2ui-protocol";

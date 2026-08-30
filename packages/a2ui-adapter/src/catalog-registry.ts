@@ -5,8 +5,8 @@ import {
   A2uiCatalogRegistry,
   DSH_BASIC_CATALOG,
   DSH_BASIC_CATALOG_ID,
-} from "@dsh-a2ui/a2ui-protocol";
-import type { A2uiCatalogRegistration } from "@dsh-a2ui/a2ui-protocol";
+} from "@dsh-plugin-edu/a2ui-protocol";
+import type { A2uiCatalogRegistration } from "@dsh-plugin-edu/a2ui-protocol";
 
 declare module "@deepseek-ai/cordis" {
   interface Context {

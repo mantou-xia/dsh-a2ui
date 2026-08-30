@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-a2ui/a2ui-protocol",
+  "name": "@dsh-plugin-edu/a2ui-protocol",
   "version": "0.1.0-beta.1",
   "description": "Shared A2UI v0.9.1 protocol, catalogs, validation guard, and lifecycle reducer for DeepSeek Harness.",
   "license": "Apache-2.0",

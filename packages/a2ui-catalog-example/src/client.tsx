@@ -1,7 +1,7 @@
 /** Browser half of the example hot-pluggable A2UI catalog library. */
 
 import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
-import type { A2uiComponentRendererProps } from "@dsh-a2ui/a2ui-renderer/client";
+import type { A2uiComponentRendererProps } from "@dsh-plugin-edu/a2ui-renderer/client";
 import { A2UI_EXAMPLE_CATALOG_ID } from "./catalog.js";
 
 /** The renderer registry must be available before this browser half activates. */

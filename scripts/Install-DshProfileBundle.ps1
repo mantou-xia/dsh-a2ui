@@ -38,32 +38,32 @@ $backupRoot = Join-Path $DshHome "backups"
 
 $files = @(
   [pscustomobject]@{
-    profileRelative = "node_modules/@dsh-a2ui/a2ui-adapter/lib/index.js"
+    profileRelative = "node_modules/@dsh-plugin-edu/a2ui-adapter/lib/index.js"
     source = Join-Path $repository "packages/a2ui-adapter/lib/index.js"
     backupRelative = "adapter/index.js"
   },
   [pscustomobject]@{
-    profileRelative = "node_modules/@dsh-a2ui/a2ui-renderer/lib/index.js"
+    profileRelative = "node_modules/@dsh-plugin-edu/a2ui-renderer/lib/index.js"
     source = Join-Path $repository "packages/a2ui-renderer/lib/index.js"
     backupRelative = "renderer/index.js"
   },
   [pscustomobject]@{
-    profileRelative = "node_modules/@dsh-a2ui/a2ui-renderer/lib/client.js"
+    profileRelative = "node_modules/@dsh-plugin-edu/a2ui-renderer/lib/client.js"
     source = Join-Path $repository "packages/a2ui-renderer/lib/client.js"
     backupRelative = "renderer/client.js"
   },
   [pscustomobject]@{
-    profileRelative = "node_modules/@dsh-a2ui/a2ui-renderer/lib/client.js.map"
+    profileRelative = "node_modules/@dsh-plugin-edu/a2ui-renderer/lib/client.js.map"
     source = Join-Path $repository "packages/a2ui-renderer/lib/client.js.map"
     backupRelative = "renderer/client.js.map"
   },
   [pscustomobject]@{
-    profileRelative = "node_modules/@dsh-a2ui/a2ui-catalog-example/lib/index.js"
+    profileRelative = "node_modules/@dsh-plugin-edu/a2ui-catalog-example/lib/index.js"
     source = Join-Path $repository "packages/a2ui-catalog-example/lib/index.js"
     backupRelative = "catalog-example/index.js"
   },
   [pscustomobject]@{
-    profileRelative = "node_modules/@dsh-a2ui/a2ui-catalog-example/lib/client.js"
+    profileRelative = "node_modules/@dsh-plugin-edu/a2ui-catalog-example/lib/client.js"
     source = Join-Path $repository "packages/a2ui-catalog-example/lib/client.js"
     backupRelative = "catalog-example/client.js"
   }

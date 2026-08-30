@@ -19,7 +19,7 @@ function library(manifest: Record<string, unknown>): string {
 
 function manifest(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    name: "@dsh-a2ui/forecast",
+    name: "@dsh-plugin-edu/forecast",
     dsh: { bundle: { patch: "./cordis.patch.yml" }, client: { platform: "web" } },
     a2ui: { catalog: { id: "forecast", components: ["weather-card"] }, host: "./lib/index.js", client: "./lib/client.js" },
     ...overrides,
@@ -33,7 +33,7 @@ afterEach(() => {
 describe("A2UI local catalog importer", () => {
   it("accepts a built library with host, client, bundle, and catalog declarations", () => {
     const inspected = inspectA2uiCatalogLibrary(library(manifest()));
-    expect(inspected.packageName).toBe("@dsh-a2ui/forecast");
+    expect(inspected.packageName).toBe("@dsh-plugin-edu/forecast");
     expect(inspected.metadata.catalog).toEqual({ id: "forecast", components: ["weather-card"] });
   });
 

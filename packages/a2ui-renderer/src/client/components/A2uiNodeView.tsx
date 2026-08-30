@@ -8,7 +8,7 @@
 import { memo, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type { A2uiComponent, A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent, A2uiSurfaceSnapshot } from "@dsh-plugin-edu/a2ui-protocol";
 import { createActionSender, type UiAction } from "../dispatch.ts";
 import { A2uiComponentRegistry } from "../registry.ts";
 import {

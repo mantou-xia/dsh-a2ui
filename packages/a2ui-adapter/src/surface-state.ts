@@ -6,7 +6,7 @@
  * 表示清空，避免把状态合并变成无法撤销的“语义猜测”。
  */
 
-import type { A2uiComponent, A2uiCreateSurface, A2uiEnvelope, A2uiVersion } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent, A2uiCreateSurface, A2uiEnvelope, A2uiVersion } from "@dsh-plugin-edu/a2ui-protocol";
 
 export type A2uiCreateSurfaceEnvelope = {
   version: A2uiVersion;

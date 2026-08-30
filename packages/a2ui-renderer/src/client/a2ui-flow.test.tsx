@@ -3,7 +3,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiSurfaceSnapshot } from "@dsh-plugin-edu/a2ui-protocol";
 import type { A2uiChatData } from "./chat-data.ts";
 import { snapshotsFromArguments, snapshotsFromDocument } from "./definition.ts";
 import type { UiAction } from "./dispatch.ts";

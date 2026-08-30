@@ -26,8 +26,8 @@ import {
   repairA2uiDocument,
   reduceA2uiDocument,
   reduceA2uiEnvelope,
-} from "@dsh-a2ui/a2ui-protocol";
-import type { A2uiEnvelope, A2uiSurfaceMap, A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
+} from "@dsh-plugin-edu/a2ui-protocol";
+import type { A2uiEnvelope, A2uiSurfaceMap, A2uiSurfaceSnapshot } from "@dsh-plugin-edu/a2ui-protocol";
 import type { A2uiChatData, A2uiSurfaceState } from "./chat-data.ts";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;

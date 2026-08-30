@@ -2,12 +2,12 @@
 
 /** JSON-safe manifest template accepted by the local component-library importer. */
 export const A2UI_CATALOG_TEMPLATE = {
-  name: "@dsh-a2ui/a2ui-catalog-your-library",
+  name: "@dsh-plugin-edu/a2ui-catalog-your-library",
   version: "0.1.0",
   type: "module",
   dsh: {
     bundle: { patch: "./cordis.patch.yml" },
-    client: { inject: ["@dsh-a2ui/a2ui-renderer"], platform: "web" },
+    client: { inject: ["@dsh-plugin-edu/a2ui-renderer"], platform: "web" },
   },
   a2ui: {
     catalog: { id: "your-catalog", components: ["your-component"] },

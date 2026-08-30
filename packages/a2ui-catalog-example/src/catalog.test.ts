@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { A2uiCatalogRegistry, DSH_BASIC_CATALOG_ID, repairA2uiDocument } from "@dsh-a2ui/a2ui-protocol";
+import { A2uiCatalogRegistry, DSH_BASIC_CATALOG_ID, repairA2uiDocument } from "@dsh-plugin-edu/a2ui-protocol";
 import { A2UI_EXAMPLE_CATALOG, A2UI_EXAMPLE_CATALOG_ID } from "./catalog.js";
 
 describe("a2ui-catalog-example", () => {

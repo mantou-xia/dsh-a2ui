@@ -14,10 +14,10 @@
     "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
-      "@dsh-a2ui/a2ui-protocol": ["packages/a2ui-protocol/src/index.ts"],
-      "@dsh-a2ui/a2ui-adapter": ["packages/a2ui-adapter/src/index.ts"],
-      "@dsh-a2ui/a2ui-renderer": ["packages/a2ui-renderer/src/index.ts"],
-      "@dsh-a2ui/a2ui-renderer/client": ["packages/a2ui-renderer/src/client/api.ts"]
+      "@dsh-plugin-edu/a2ui-protocol": ["packages/a2ui-protocol/src/index.ts"],
+      "@dsh-plugin-edu/a2ui-adapter": ["packages/a2ui-adapter/src/index.ts"],
+      "@dsh-plugin-edu/a2ui-renderer": ["packages/a2ui-renderer/src/index.ts"],
+      "@dsh-plugin-edu/a2ui-renderer/client": ["packages/a2ui-renderer/src/client/api.ts"]
     },
     "types": []
   },

@@ -1,7 +1,7 @@
 import type { UserConfig } from "tsdown";
 
 const nodeConfig: UserConfig = {
-  name: "@dsh-a2ui/a2ui-catalog-example",
+  name: "@dsh-plugin-edu/a2ui-catalog-example",
   entry: ["src/index.ts"],
   outDir: "lib",
   format: ["esm"],
@@ -13,7 +13,7 @@ const nodeConfig: UserConfig = {
 };
 
 const clientConfig: UserConfig = {
-  name: "@dsh-a2ui/a2ui-catalog-example/client",
+  name: "@dsh-plugin-edu/a2ui-catalog-example/client",
   entry: { client: "src/client.tsx" },
   outDir: "lib",
   format: "cjs",
@@ -26,7 +26,7 @@ const clientConfig: UserConfig = {
   },
   outputOptions: {
     entryFileNames: "client.js",
-    banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify("@dsh-a2ui/a2ui-catalog-example")}, factory: (require) => {`,
+    banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify("@dsh-plugin-edu/a2ui-catalog-example")}, factory: (require) => {`,
     footer: "return module.exports; } });",
     intro: "var module = { exports: {} }; var exports = module.exports;",
   },

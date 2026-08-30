@@ -20,8 +20,8 @@ import {
   type A2uiCatalogRegistry,
   inspectA2uiDocument,
   reduceA2uiDocument,
-} from "@dsh-a2ui/a2ui-protocol";
-import type { A2uiGuardDiagnostic, A2uiGuardStats } from "@dsh-a2ui/a2ui-protocol";
+} from "@dsh-plugin-edu/a2ui-protocol";
+import type { A2uiGuardDiagnostic, A2uiGuardStats } from "@dsh-plugin-edu/a2ui-protocol";
 import { A2uiSurfaceStateStore } from "./surface-state.js";
 
 export const A2UI_TOOL_NAME = "a2ui_render" as const;

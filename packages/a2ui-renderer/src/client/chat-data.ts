@@ -5,7 +5,7 @@
  * delete 与 dataModel 生命周期，再把各 surface 的最终快照交给渲染节点。
  */
 
-import type { A2uiSurfaceSnapshot } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiSurfaceSnapshot } from "@dsh-plugin-edu/a2ui-protocol";
 import type {} from "@deepseek-ai/dsh-client-runtime/client";
 import type {} from "@deepseek-ai/dsh-client-ui-conversation/client";
 

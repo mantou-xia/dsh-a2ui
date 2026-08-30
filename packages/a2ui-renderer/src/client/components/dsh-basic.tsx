@@ -1,6 +1,6 @@
 /** Browser registrations for the built-in dsh-basic catalog library. */
 
-import type { A2uiComponent } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent } from "@dsh-plugin-edu/a2ui-protocol";
 import type { A2uiComponentRegistry, A2uiComponentRendererProps } from "../registry.ts";
 import { CalloutView, CardView, ChartView, GridView, StatView, TableView, TabsView } from "./static.tsx";
 import {

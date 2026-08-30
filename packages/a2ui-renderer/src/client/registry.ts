@@ -1,7 +1,7 @@
 /** A2UI browser component registry. */
 
 import type { ComponentType, ReactNode } from "react";
-import type { A2uiComponent } from "@dsh-a2ui/a2ui-protocol";
+import type { A2uiComponent } from "@dsh-plugin-edu/a2ui-protocol";
 
 /** Props shared by every catalog-provided React component. */
 export type A2uiComponentRendererProps = {

@@ -4,15 +4,15 @@
 # 不改动 dsh base 的任何行。
 #
 # 两行作用：
-#   - dsh-a2ui（@dsh-a2ui/a2ui-adapter）：宿主侧插件，注册 A2UI 教学段；
-#   - dsh-a2ui-renderer（@dsh-a2ui/a2ui-renderer）：dsh.client 行，
+#   - dsh-a2ui（@dsh-plugin-edu/a2ui-adapter）：宿主侧插件，注册 A2UI 教学段；
+#   - dsh-a2ui-renderer（@dsh-plugin-edu/a2ui-renderer）：dsh.client 行，
 #     ClientModuleRegistry 扫描到 `dsh.client.platform === 'web'` 后将其
-#     编入 window.__DSH_BOOT__ 并下发 /plugins/@dsh-a2ui/a2ui-renderer/client.js。
+#     编入 window.__DSH_BOOT__ 并下发 /plugins/@dsh-plugin-edu/a2ui-renderer/client.js。
 - insert:
     - id: dsh-a2ui
-      name: '@dsh-a2ui/a2ui-adapter'
+      name: '@dsh-plugin-edu/a2ui-adapter'
       config:
         profileName: web
 
     - id: dsh-a2ui-renderer
-      name: '@dsh-a2ui/a2ui-renderer'
+      name: '@dsh-plugin-edu/a2ui-renderer'
